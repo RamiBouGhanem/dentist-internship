@@ -11,16 +11,16 @@ export class AuthService {
   ) {}
 
   async register(body: { name: string; email: string; password: string }) {
-    const hashed = await bcrypt.hash(body.password, 10);
+    const hashed = await bcrypt.hash(body.password, 10); // hashing the password via bcrypt
     const dentist = await this.dentistService.create({ ...body, password: hashed });
-    const token = this.jwtService.sign({ sub: dentist._id });
+    const token = this.jwtService.sign({ sub: dentist._id }); // creating the token 
     return { token, dentist };
   }
 
   async login(body: { email: string; password: string }) {
     const dentist = await this.dentistService.findByEmail(body.email);
     if (!dentist) return null;
-    const match = await bcrypt.compare(body.password, dentist.password);
+    const match = await bcrypt.compare(body.password, dentist.password); // checking if the input matches the password
     if (!match) return null;
     const token = this.jwtService.sign({ sub: dentist._id });
     return { token, dentist };
