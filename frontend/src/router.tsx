@@ -15,7 +15,14 @@ const rootRoute = new RootRoute();
 const authRoute = new Route({
   getParentRoute: () => rootRoute,
   path: '/',
-  component: AuthForm,
+  component: () => (
+    <AuthForm
+      onAuth={() => {
+        localStorage.setItem('loggedIn', 'true'); // optional
+        console.log('onAuth called');
+      }}
+    />
+  ),
 });
 
 // Chart route (/chart)

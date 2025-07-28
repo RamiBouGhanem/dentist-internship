@@ -9,7 +9,7 @@ interface ProcedureItemProps {
 
 export default function ProcedureItem({ type, color }: ProcedureItemProps) {
   const dragRef = useRef<HTMLDivElement>(null);
-
+  
   const [{ isDragging }, drag] = useDrag(() => ({
     type: 'procedure',
     item: { type, color },

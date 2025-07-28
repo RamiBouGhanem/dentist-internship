@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useToothStore } from '../store/useToothStore';
+import { useQuery } from '@tanstack/react-query';
 
-// Define types for patient and the component state
 interface Patient {
   _id: string;
   name: string;
@@ -16,33 +16,33 @@ export default function PatientSelector() {
   const loadPatientData = useToothStore((state) => state.loadPatientData);
 
   const [query, setQuery] = useState<string>('');
-  const [filtered, setFiltered] = useState<Patient[]>([]);  // Typed as array of Patient
   const [hasSelected, setHasSelected] = useState<boolean>(false);
 
   useEffect(() => {
     fetchPatients();
   }, [fetchPatients]);
 
-  useEffect(() => {
-    if (!query) {
-      setFiltered([]);
-      setHasSelected(false);
-      return;
-    }
-
-    const results = patients.filter((p) =>
-      p.name.toLowerCase().startsWith(query.toLowerCase())
-    );
-    setFiltered(results);
-    setHasSelected(false);
-  }, [query, patients]);
+  const { data: filtered = [] } = useQuery<Patient[]>({
+    queryKey: ['filteredPatients', query, patients],
+    queryFn: () => {
+      if (!query) return [];
+      return patients.filter((p) =>
+        p.name.toLowerCase().startsWith(query.toLowerCase())
+      );
+    },
+    enabled: !!patients.length,
+  });
 
   const handleSelect = async (patient: Patient) => {
     setQuery(patient.name);
     setPatientId(patient._id);
     await loadPatientData();
-    setFiltered([]);
-    setHasSelected(true);
+    setHasSelected(true); // mark as selected
+  };
+
+  const handleInputChange = (value: string) => {
+    setQuery(value);
+    setHasSelected(false); // re-enable list if user types again
   };
 
   return (
@@ -50,12 +50,13 @@ export default function PatientSelector() {
       <input
         type="text"
         value={query}
-        onChange={(e) => setQuery(e.target.value)}
+        onChange={(e) => handleInputChange(e.target.value)}
         placeholder="Search and select patient..."
         className="p-2 w-full border rounded shadow-sm"
       />
 
-      {filtered.length > 0 && (
+      {/* Show dropdown only when user hasn't selected yet */}
+      {!hasSelected && filtered.length > 0 && (
         <ul className="absolute left-0 right-0 mt-1 bg-white border rounded shadow z-10 max-h-40 overflow-auto">
           {filtered.map((p) => (
             <li

@@ -10,15 +10,18 @@ interface AuthFormData {
   password: string;
 }
 
-// Declare the onAuth prop type
 interface AuthFormProps {
-  onAuth: () => void; // onAuth function that will be passed from App.tsx
+  onAuth: () => void;
 }
 
 export default function AuthForm({ onAuth }: AuthFormProps) {
   const navigate = useNavigate();
   const [mode, setMode] = useState<Mode>('login');
-  const [form, setForm] = useState<AuthFormData>({ name: '', email: '', password: '' });
+  const [form, setForm] = useState<AuthFormData>({
+    name: '',
+    email: '',
+    password: '',
+  });
   const [error, setError] = useState('');
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -31,19 +34,31 @@ export default function AuthForm({ onAuth }: AuthFormProps) {
     const endpoint = mode === 'login' ? 'login' : 'register';
 
     try {
-      const res = await axios.post(`http://localhost:3333/auth/${endpoint}`, form);
+      const res = await axios.post(
+        `http://localhost:3333/auth/${endpoint}`,
+        form
+      );
+
       const { token, dentist } = res.data;
       localStorage.setItem('token', token);
       localStorage.setItem('dentistId', dentist._id);
-      onAuth(); // Call onAuth when authentication is successful
-      navigate({ to: '/chart' });  // Correct usage of navigate
-    } catch (err) {
-      setError(mode === 'login' ? 'Invalid credentials.' : 'Email already registered.');
+
+      console.log('handleSubmit: calling onAuth...');
+      onAuth(); // Notify parent that login was successful
+      navigate({ to: '/chart' });
+    } catch (err: any) {
+      console.error(err);
+      setError(
+        mode === 'login' ? 'Invalid credentials.' : 'Email already registered.'
+      );
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-cover bg-center bg-no-repeat bg-fixed transition-all duration-500" style={{ backgroundImage: "url('/login-bg.jpg')" }}>
+    <div
+      className="min-h-screen flex items-center justify-center bg-cover bg-center bg-no-repeat bg-fixed transition-all duration-500"
+      style={{ backgroundImage: "url('/login-bg.jpg')" }}
+    >
       <div className="w-full max-w-md p-8 bg-white/80 border border-gray-200 rounded-2xl shadow-2xl backdrop-blur-md ring ring-white/40 hover:scale-[1.01] transition-transform duration-300">
         <h2 className="text-3xl font-extrabold text-center text-neutral-800 mb-6 tracking-tight">
           {mode === 'login' ? 'Sign In' : 'Create an Account'}

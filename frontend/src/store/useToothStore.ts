@@ -1,15 +1,17 @@
+// ✅ useToothStore.ts
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import {
   getAllPatients,
   getPatientById,
-  updatePatientProcedures
+  updatePatientProcedures,
 } from '../api/patientApi';
 
 // Types
 export interface Procedure {
   type: string;
-  color: string;
+  createdAt?: string;
+  notes?: string;
   x?: number;
   y?: number;
 }
@@ -22,11 +24,28 @@ export interface Patient {
   teethData?: Record<string, Procedure[]>;
 }
 
-// Zustand Store Interface
 interface ToothStore {
   teethData: Record<string, Procedure[]>;
   patientId: string | null;
   patients: Patient[];
+
+  selectedProcedure: { proc: Procedure; toothNumber: string } | null;
+  draftProcedure: { proc: Procedure; toothNumber: string } | null;
+  noteModalVisible: boolean;
+
+  // New UI state for showing/hiding the history table
+  showTable: boolean;
+  toggleTable: () => void;
+
+  setDraftProcedure: (proc: Procedure, toothNumber: string) => void;
+  clearDraftProcedure: () => void;
+  showNoteModal: () => void;
+  hideNoteModal: () => void;
+
+  saveNoteAndAddProcedure: (note: string) => Promise<void>;
+
+  setSelectedProcedure: (proc: Procedure, toothNumber: string) => void;
+  clearSelectedProcedure: () => void;
 
   addProcedureToTooth: (number: string, item: Procedure) => Promise<void>;
   removeProcedureFromTooth: (number: string, index: number) => Promise<void>;
@@ -46,12 +65,67 @@ export const useToothStore = create<ToothStore>()(
       patientId: null,
       patients: [],
 
+      selectedProcedure: null,
+      draftProcedure: null,
+      noteModalVisible: false,
+
+      // New UI state
+      showTable: true,
+      toggleTable: () => set((state) => ({ showTable: !state.showTable })),
+
+      setDraftProcedure: (proc, toothNumber) =>
+        set({ draftProcedure: { proc, toothNumber } }),
+      clearDraftProcedure: () => set({ draftProcedure: null }),
+      showNoteModal: () => set({ noteModalVisible: true }),
+      hideNoteModal: () => set({ noteModalVisible: false }),
+
+      saveNoteAndAddProcedure: async (note) => {
+        const state = get();
+        const draft = state.draftProcedure;
+        if (!draft) return;
+
+        const now = new Date().toISOString();
+
+        const newProcedure: Procedure = {
+          ...draft.proc,
+          createdAt: now,
+          notes: note,
+        };
+
+        const existing = state.teethData[draft.toothNumber] || [];
+        const updatedTeethData = {
+          ...state.teethData,
+          [draft.toothNumber]: [...existing, newProcedure],
+        };
+
+        set({
+          teethData: updatedTeethData,
+          draftProcedure: null,
+          noteModalVisible: false,
+        });
+
+        if (state.patientId) {
+          try {
+            await updatePatientProcedures(state.patientId, updatedTeethData);
+          } catch (err) {
+            console.error('Failed to save procedure:', err);
+          }
+        }
+      },
+
+      setSelectedProcedure: (proc, toothNumber) =>
+        set({ selectedProcedure: { proc, toothNumber } }),
+      clearSelectedProcedure: () => set({ selectedProcedure: null }),
+
       addProcedureToTooth: async (number, item) => {
+        const now = new Date().toISOString();
+        const newProcedure = { ...item, createdAt: now, notes: '' };
+
         const state = get();
         const existing = state.teethData[number] || [];
         const updatedTeethData = {
           ...state.teethData,
-          [number]: [...existing, item],
+          [number]: [...existing, newProcedure],
         };
 
         set({ teethData: updatedTeethData });
