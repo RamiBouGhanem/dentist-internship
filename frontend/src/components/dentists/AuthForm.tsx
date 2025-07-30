@@ -39,9 +39,13 @@ export default function AuthForm({ onAuth }: AuthFormProps) {
         form
       );
 
+      // ✅ Expect backend to return the token and full dentist object
       const { token, dentist } = res.data;
+
+      // Store token and dentist info in localStorage
       localStorage.setItem('token', token);
       localStorage.setItem('dentistId', dentist._id);
+      localStorage.setItem('dentistName', dentist.name); // ✅ store name for later use
 
       console.log('handleSubmit: calling onAuth...');
       onAuth(); // Notify parent that login was successful
@@ -67,7 +71,9 @@ export default function AuthForm({ onAuth }: AuthFormProps) {
         <form onSubmit={handleSubmit} className="space-y-5">
           {mode === 'register' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700">Full Name</label>
+              <label className="block text-sm font-medium text-gray-700">
+                Full Name
+              </label>
               <input
                 type="text"
                 name="name"
@@ -81,7 +87,9 @@ export default function AuthForm({ onAuth }: AuthFormProps) {
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Email Address</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Email Address
+            </label>
             <input
               type="email"
               name="email"
@@ -94,7 +102,9 @@ export default function AuthForm({ onAuth }: AuthFormProps) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Password</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Password
+            </label>
             <input
               type="password"
               name="password"

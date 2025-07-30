@@ -2,6 +2,7 @@
 import React from 'react';
 import Toolbar from '../Toolbar';
 import ToothChart from '../ToothChart';
+import ProcedureHistoryTable from '../ProcedureHistoryDrawer';
 
 export default function MainLayout() {
   return (
@@ -17,6 +18,7 @@ export default function MainLayout() {
       <div className="w-full max-w-5xl">
         <div className="bg-white rounded-lg shadow p-6">
           <ToothChart />
+          <ProcedureHistoryTable />
         </div>
       </div>
     </main>

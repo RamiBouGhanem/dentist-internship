@@ -1,29 +1,57 @@
-// components/ProcedureHistoryDrawer.tsx
-import React, { useState } from 'react';
-import { useToothStore } from '../store/useToothStore';
-import { Clock, FileText, Search } from 'lucide-react';
+import React, { useState } from "react";
+import { useToothStore } from "../store/useToothStore";
+import { Trash2, Search, FileText } from "lucide-react";
 
-interface Props {
-  open: boolean;
-  onClose: () => void;
-}
+export default function ProcedureHistoryTable() {
+  const {
+    teethData,
+    patients,
+    patientId,
+    removeProcedureFromTooth,
+    updateProcedureNote,
+  } = useToothStore();
 
-export default function ProcedureHistoryDrawer({ open, onClose }: Props) {
-  const { teethData, patients, patientId } = useToothStore();
-  const [filter, setFilter] = useState('');
+  const [filter, setFilter] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [comment, setComment] = useState("");
+  const [deleteItem, setDeleteItem] = useState<{
+    tooth: string;
+    idx: number;
+    type: string;
+    createdAt?: string;
+    notes?: string;
+  } | null>(null);
 
   if (!patientId) return null;
-
   const patient = patients.find((p) => p._id === patientId);
-  const history: { tooth: string; proc: any }[] = [];
+
+  // Build history array
+  const history: {
+    id: string;
+    tooth: string;
+    proc: any;
+    idx: number;
+  }[] = [];
 
   for (const tooth in teethData) {
-    for (const proc of teethData[tooth]) {
-      history.push({ tooth, proc });
-    }
+    teethData[tooth].forEach((proc: any, idx: number) => {
+      history.push({
+        id: `${tooth}-${idx}`,
+        tooth,
+        proc,
+        idx,
+      });
+    });
   }
 
-  // Filter history
+  // Sort by date (newest first)
+  history.sort((a, b) => {
+    const dateA = new Date(a.proc.createdAt || 0).getTime();
+    const dateB = new Date(b.proc.createdAt || 0).getTime();
+    return dateB - dateA;
+  });
+
+  // Apply filter
   const filtered = history.filter(({ tooth, proc }) => {
     const search = filter.toLowerCase();
     return (
@@ -33,96 +61,231 @@ export default function ProcedureHistoryDrawer({ open, onClose }: Props) {
     );
   });
 
+  // Save comment on Enter
+  const handleEnterSave = async (
+    e: React.KeyboardEvent<HTMLInputElement>,
+    tooth: string,
+    idx: number
+  ) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      await updateProcedureNote(tooth, idx, comment);
+      setEditingId(null);
+    }
+  };
+
+  const confirmDelete = () => {
+    if (deleteItem) {
+      removeProcedureFromTooth(deleteItem.tooth, deleteItem.idx);
+      setDeleteItem(null);
+    }
+  };
+
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        className={`fixed inset-0 bg-black bg-opacity-40 transition-opacity z-40 ${
-          open ? 'opacity-100' : 'opacity-0 pointer-events-none'
-        }`}
-        onClick={onClose}
-      />
-
-      {/* Drawer */}
-      <div
-        className={`fixed top-0 right-0 h-full w-full max-w-lg bg-white z-50 shadow-xl transform transition-transform duration-300 ease-in-out ${
-          open ? 'translate-x-0' : 'translate-x-full'
-        }`}
-      >
-        {/* Header */}
-        <div className="flex justify-between items-center px-6 py-4 border-b">
-          <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
-            <Clock size={20} className="text-blue-600" /> Procedure History
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-600 hover:text-red-500 text-2xl leading-none"
-          >
-            &times;
-          </button>
-        </div>
-
-        {/* Patient Info & Filter */}
-        <div className="px-6 py-3 border-b flex items-center gap-3">
-          <div className="text-sm text-gray-600 font-medium">
-            Patient: <strong>{patient?.name}</strong>
-          </div>
-          <div className="ml-auto flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-md">
-            <Search size={16} className="text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search by Tooth Number..."
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              className="bg-transparent text-sm focus:outline-none"
-            />
-          </div>
-        </div>
-
-        {/* History Content */}
-        <div className="p-6 overflow-y-auto h-[calc(100%-130px)] space-y-4">
-          {filtered.length === 0 ? (
-            <p className="text-gray-500 text-sm text-center mt-8">
-              No matching procedures found.
-            </p>
-          ) : (
-            filtered.map(({ tooth, proc }, idx) => (
-              <div
-                key={idx}
-                className="border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-bold text-gray-700">
-                    Tooth #{tooth}
-                  </span>
-                  <span
-                    className="text-xs px-2 py-1 rounded-full font-medium"
-                    style={{ backgroundColor: proc.color, color: 'white' }}
-                  >
-                    {proc.type}
-                  </span>
-                </div>
-
-                <div className="text-xs text-gray-500 flex items-center gap-2 mb-2">
-                  <Clock size={14} />
-                  {proc.createdAt
-                    ? new Date(proc.createdAt).toLocaleString()
-                    : '—'}
-                </div>
-
-                {proc.notes && (
-                  <div className="mt-2 flex items-start gap-2 text-sm">
-                    <FileText size={16} className="text-gray-400 mt-1" />
-                    <div className="bg-gray-50 border border-gray-200 rounded p-2 text-gray-700 whitespace-pre-wrap w-full">
-                      {proc.notes}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))
-          )}
+    <section className="mt-10 px-4">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-semibold text-gray-800">
+          Procedure History
+        </h2>
+        <div className="flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-md border border-gray-300">
+          <Search size={18} className="text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search by tooth, procedure, or notes..."
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            className="bg-transparent text-sm w-56 focus:outline-none"
+          />
         </div>
       </div>
-    </>
+
+      {/* Table */}
+      <div className="overflow-x-auto border border-gray-200 rounded-lg bg-white shadow-sm">
+        <table className="min-w-full text-sm text-gray-700">
+          <thead className="bg-gray-100 text-gray-700 uppercase text-xs tracking-wider">
+            <tr>
+              <th className="px-4 py-2 text-left">Patient</th>
+              <th className="px-4 py-2 text-left">Dentist</th>
+              <th className="px-4 py-2 text-left">Procedure</th>
+              <th className="px-4 py-2 text-center">Tooth #</th>
+              <th className="px-4 py-2 text-center">Date</th>
+              <th className="px-4 py-2 text-left">Comment</th>
+              <th className="px-4 py-2 text-center">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={7}
+                  className="px-4 py-6 text-center text-gray-500 text-sm"
+                >
+                  No procedure history found.
+                </td>
+              </tr>
+            ) : (
+              filtered.map(({ id, tooth, proc, idx }, rowIndex) => {
+                // Restriction: cannot edit or delete after 24hrs
+                const canEdit =
+                  new Date().getTime() -
+                    new Date(proc.createdAt || new Date()).getTime() <=
+                  24 * 60 * 60 * 1000;
+
+                return (
+                  <tr
+                    key={id}
+                    className={`${
+                      rowIndex % 2 === 0 ? "bg-white" : "bg-gray-50"
+                    } hover:bg-gray-100 transition`}
+                  >
+                    <td className="px-4 py-2">{patient?.name}</td>
+                    <td className="px-4 py-2">{proc.dentistName || "—"}</td>
+                    <td className="px-4 py-2">
+                      <span
+                        className="px-2 py-1 rounded text-white text-xs font-semibold"
+                        style={{ backgroundColor: proc.color }}
+                      >
+                        {proc.type}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2 text-center font-semibold">
+                      {tooth}
+                    </td>
+                    <td className="px-4 py-2 text-center">
+                      {proc.createdAt
+                        ? new Date(proc.createdAt).toLocaleString()
+                        : "—"}
+                    </td>
+                    {/* Comment + Edit icon */}
+                    <td className="px-4 py-2">
+                      {editingId === id ? (
+                        <input
+                          type="text"
+                          value={comment}
+                          onChange={(e) => setComment(e.target.value)}
+                          onKeyDown={(e) => handleEnterSave(e, tooth, idx)}
+                          className="border border-gray-300 rounded-md px-2 py-1 text-sm w-full focus:ring-1 focus:ring-blue-400"
+                          autoFocus
+                        />
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-700 text-sm">
+                            {proc.notes || (
+                              <span className="text-gray-400 italic">
+                                No comment
+                              </span>
+                            )}
+                          </span>
+                          <button
+                            onClick={() => {
+                              if (canEdit) {
+                                setEditingId(id);
+                                setComment(proc.notes || "");
+                              }
+                            }}
+                            disabled={!canEdit}
+                            className={`${
+                              canEdit
+                                ? "text-blue-500 hover:text-blue-700"
+                                : "text-gray-300 cursor-not-allowed"
+                            }`}
+                            title={
+                              canEdit
+                                ? "Edit comment"
+                                : "Cannot edit after 24 hours"
+                            }
+                          >
+                            <FileText size={16} />
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                    {/* Delete button */}
+                    <td className="px-4 py-2 text-center">
+                      <button
+                        onClick={() => {
+                          if (canEdit) {
+                            setDeleteItem({
+                              tooth,
+                              idx,
+                              type: proc.type,
+                              createdAt: proc.createdAt,
+                              notes: proc.notes,
+                            });
+                          }
+                        }}
+                        disabled={!canEdit}
+                        className={`${
+                          canEdit
+                            ? "text-red-500 hover:text-red-700"
+                            : "text-gray-300 cursor-not-allowed"
+                        }`}
+                        title={
+                          canEdit
+                            ? "Delete procedure"
+                            : "Cannot delete after 24 hours"
+                        }
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteItem && (
+        <div className="fixed inset-0 flex items-center justify-center z-50">
+          <div
+            className="absolute inset-0 bg-black bg-opacity-40"
+            onClick={() => setDeleteItem(null)}
+          />
+          <div className="relative bg-white rounded-lg shadow-lg p-6 w-[380px]">
+            <div className="flex items-center mb-4">
+              <div className="p-2 bg-red-100 rounded-full mr-3">
+                <Trash2 className="text-red-600 w-6 h-6" />
+              </div>
+              <h2 className="text-lg font-semibold text-gray-800">
+                Confirm Deletion
+              </h2>
+            </div>
+            <p className="text-gray-700 mb-4">
+              Are you sure you want to delete procedure:{" "}
+              <span className="font-bold text-red-500">{deleteItem.type}</span>?
+            </p>
+            {deleteItem.createdAt && (
+              <p className="text-sm text-gray-500 mb-2">
+                <strong>Date:</strong>{" "}
+                {new Date(deleteItem.createdAt).toLocaleString()}
+              </p>
+            )}
+            {deleteItem.notes && (
+              <p className="text-sm text-gray-500">
+                <strong>Notes:</strong> {deleteItem.notes}
+              </p>
+            )}
+            <div className="flex justify-end gap-3 mt-4">
+              <button
+                onClick={() => setDeleteItem(null)}
+                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
   );
 }

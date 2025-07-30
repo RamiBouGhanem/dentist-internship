@@ -12,6 +12,8 @@ export interface Procedure {
   type: string;
   createdAt?: string;
   notes?: string;
+  dentistId?: string;
+  dentistName?: string;
   x?: number;
   y?: number;
 }
@@ -33,7 +35,7 @@ interface ToothStore {
   draftProcedure: { proc: Procedure; toothNumber: string } | null;
   noteModalVisible: boolean;
 
-  // New UI state for showing/hiding the history table
+  // UI state
   showTable: boolean;
   toggleTable: () => void;
 
@@ -49,6 +51,11 @@ interface ToothStore {
 
   addProcedureToTooth: (number: string, item: Procedure) => Promise<void>;
   removeProcedureFromTooth: (number: string, index: number) => Promise<void>;
+  updateProcedureNote: (
+    toothNumber: string,
+    index: number,
+    note: string
+  ) => Promise<void>;
 
   setPatientId: (id: string) => void;
 
@@ -69,7 +76,7 @@ export const useToothStore = create<ToothStore>()(
       draftProcedure: null,
       noteModalVisible: false,
 
-      // New UI state
+      // UI state
       showTable: true,
       toggleTable: () => set((state) => ({ showTable: !state.showTable })),
 
@@ -84,12 +91,18 @@ export const useToothStore = create<ToothStore>()(
         const draft = state.draftProcedure;
         if (!draft) return;
 
+        // ✅ Get dentist details from localStorage
+        const dentistId = localStorage.getItem('dentistId') || '';
+        const dentistName = localStorage.getItem('dentistName') || 'Unknown';
+
         const now = new Date().toISOString();
 
         const newProcedure: Procedure = {
           ...draft.proc,
           createdAt: now,
           notes: note,
+          dentistId,
+          dentistName,
         };
 
         const existing = state.teethData[draft.toothNumber] || [];
@@ -118,8 +131,18 @@ export const useToothStore = create<ToothStore>()(
       clearSelectedProcedure: () => set({ selectedProcedure: null }),
 
       addProcedureToTooth: async (number, item) => {
+        // ✅ Get dentist details from localStorage
+        const dentistId = localStorage.getItem('dentistId') || '';
+        const dentistName = localStorage.getItem('dentistName') || 'Unknown';
+
         const now = new Date().toISOString();
-        const newProcedure = { ...item, createdAt: now, notes: '' };
+        const newProcedure = {
+          ...item,
+          createdAt: now,
+          notes: '',
+          dentistId,
+          dentistName,
+        };
 
         const state = get();
         const existing = state.teethData[number] || [];
@@ -156,6 +179,30 @@ export const useToothStore = create<ToothStore>()(
             await updatePatientProcedures(state.patientId, updatedTeethData);
           } catch (err) {
             console.error('Failed to update procedures:', err);
+          }
+        }
+      },
+
+      // ✅ New function for updating comment (notes)
+      updateProcedureNote: async (toothNumber, index, note) => {
+        const state = get();
+        const updated = [...(state.teethData[toothNumber] || [])];
+        if (updated[index]) {
+          updated[index] = { ...updated[index], notes: note };
+        }
+
+        const updatedTeethData = {
+          ...state.teethData,
+          [toothNumber]: updated,
+        };
+
+        set({ teethData: updatedTeethData });
+
+        if (state.patientId) {
+          try {
+            await updatePatientProcedures(state.patientId, updatedTeethData);
+          } catch (err) {
+            console.error('Failed to update procedure note:', err);
           }
         }
       },

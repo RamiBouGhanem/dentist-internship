@@ -40,7 +40,7 @@ export default function ToothChart() {
         </div>
       </div>
 
-      {/* ✅ Modal visible across chart */}
+      {/* Modal visible across chart */}
       <ProcedureModal />
     </div>
   );

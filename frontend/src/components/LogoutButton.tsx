@@ -12,8 +12,9 @@ export default function LogoutButton({ onLogout }: LogoutButtonProps) {
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('dentistId');
+    localStorage.removeItem('loggedIn');
     onLogout();
-    navigate({ to: '/' }); // ✅ navigate to home
+    navigate({ to: '/' }); // navigate to home
   };
 
   return (
