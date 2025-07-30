@@ -6,7 +6,7 @@ import Header from './components/layout/Header';
 // import PatientSection from './components/layout/PatientSection';
 // import ToolbarSection from './components/layout/ToolbarSection';
 // import ToothChartSection from './components/layout/ToothChartSection';
-import ProcedureHistoryDrawer from './components/ProcedureHistoryDrawer';
+import ProcedureHistoryDrawer from './components/ProcedureHistoryTable';
 import NoteInputModal from './components/NoteInputModal';
 import PatientModal from './components/PatientModal';
 import Toolbar from './components/Toolbar';

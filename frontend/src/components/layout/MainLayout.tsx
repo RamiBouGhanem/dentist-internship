@@ -2,7 +2,7 @@
 import React from 'react';
 import Toolbar from '../Toolbar';
 import ToothChart from '../ToothChart';
-import ProcedureHistoryTable from '../ProcedureHistoryDrawer';
+import ProcedureHistoryTable from '../ProcedureHistoryTable';
 
 export default function MainLayout() {
   return (
