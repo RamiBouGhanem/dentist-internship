@@ -10,10 +10,10 @@ interface AuthenticatedRequest extends Request {
 @UseGuards(JwtAuthGuard)
 @Controller('patients')
 export class PatientsController {
-  constructor(private readonly patientsService: PatientsService) { }
+  constructor(private readonly patientsService: PatientsService) {}
 
   @Post()
-  create(@Body() body: { name: string; age?: number; gender?: string; dentistId?: string }) {
+  create(@Body() body: { name: string; age?: number; gender?: string; dentistId?: string; dentitionType?: 'child' | 'mixed' | 'adult' }) {
     return this.patientsService.create(body);
   }
 

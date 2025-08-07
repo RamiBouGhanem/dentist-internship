@@ -9,12 +9,18 @@ interface CreatePatientFormProps {
 }
 
 export default function CreatePatientForm({ onSuccess }: CreatePatientFormProps) {
-  // Updated the type for gender to be "male" | "female"
-  const [form, setForm] = useState<{ name: string; age: number; gender: 'male' | 'female' }>({
+  const [form, setForm] = useState<{
+    name: string;
+    age: number;
+    gender: 'male' | 'female';
+    dentitionType: 'child' | 'mixed' | 'adult';
+  }>({
     name: '',
-    age: 0, // Set default age as a number
+    age: 0,
     gender: 'male',
+    dentitionType: 'adult', // default to adult dentition
   });
+
   const [submitted, setSubmitted] = useState<boolean>(false);
   const [errors, setErrors] = useState<{ [key: string]: string | null }>({});
 
@@ -29,6 +35,10 @@ export default function CreatePatientForm({ onSuccess }: CreatePatientFormProps)
 
   const handleGenderToggle = (gender: 'male' | 'female') => {
     setForm((prev) => ({ ...prev, gender }));
+  };
+
+  const handleDentitionToggle = (dentitionType: 'child' | 'mixed' | 'adult') => {
+    setForm((prev) => ({ ...prev, dentitionType }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -53,7 +63,7 @@ export default function CreatePatientForm({ onSuccess }: CreatePatientFormProps)
       const res = await createPatient({
         ...form,
         dentistId,
-        age: form.age, // Ensure age is passed as a number
+        age: form.age,
       });
 
       const newPatient = res.data;
@@ -61,7 +71,7 @@ export default function CreatePatientForm({ onSuccess }: CreatePatientFormProps)
       await loadPatientData();
       await fetchPatients();
       setSubmitted(true);
-      setForm({ name: '', age: 0, gender: 'male' });
+      setForm({ name: '', age: 0, gender: 'male', dentitionType: 'adult' });
       setErrors({});
 
       setTimeout(() => setSubmitted(false), 3000);
@@ -122,6 +132,7 @@ export default function CreatePatientForm({ onSuccess }: CreatePatientFormProps)
         )}
       </div>
 
+      {/* Gender Selector */}
       <div className="text-center">
         <p className="mb-2 text-[15px] text-neutral-600 font-medium">Gender</p>
         <div className="flex justify-center gap-4">
@@ -152,6 +163,49 @@ export default function CreatePatientForm({ onSuccess }: CreatePatientFormProps)
         </div>
       </div>
 
+      {/* Dentition Type Selector */}
+      <div className="text-center">
+        <p className="mb-2 text-[15px] text-neutral-600 font-medium">Dentition Type</p>
+        <div className="flex justify-center gap-4">
+          <button
+            type="button"
+            onClick={() => handleDentitionToggle('child')}
+            className={`px-4 py-2 rounded-full border text-sm font-medium transition 
+              ${
+                form.dentitionType === 'child'
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                  : 'bg-neutral-100 text-neutral-700 border-gray-300 hover:bg-neutral-200'
+              }`}
+          >
+            Child
+          </button>
+          <button
+            type="button"
+            onClick={() => handleDentitionToggle('mixed')}
+            className={`px-4 py-2 rounded-full border text-sm font-medium transition 
+              ${
+                form.dentitionType === 'mixed'
+                  ? 'bg-green-600 text-white border-green-600 shadow-sm'
+                  : 'bg-neutral-100 text-neutral-700 border-gray-300 hover:bg-neutral-200'
+              }`}
+          >
+            Mixed
+          </button>
+          <button
+            type="button"
+            onClick={() => handleDentitionToggle('adult')}
+            className={`px-4 py-2 rounded-full border text-sm font-medium transition 
+              ${
+                form.dentitionType === 'adult'
+                  ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
+                  : 'bg-neutral-100 text-neutral-700 border-gray-300 hover:bg-neutral-200'
+              }`}
+          >
+            Adult
+          </button>
+        </div>
+      </div>
+
       <button
         type="submit"
         className="w-full bg-neutral-800 hover:bg-neutral-900 text-white font-semibold py-2.5 rounded-md shadow-sm transition"
@@ -166,5 +220,5 @@ export default function CreatePatientForm({ onSuccess }: CreatePatientFormProps)
         </div>
       )}
     </form>
-  );
+  );x
 }

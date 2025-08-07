@@ -1,37 +1,62 @@
-import React from 'react';
-import ProcedureItem from './ProcedureItem';
-
-// Define the type for the procedure object
-interface Procedure {
-  type: string;
-  color: string;
-}
-
-// Define the type for the Toolbar component's state
-const procedures: Procedure[] = [
-  { type: 'Endo', color: '#B22222' },           // Deep red (root canal treatment - pulp removal)
-  { type: 'Filling', color: '#C0C0C0' },        // Silver/gray (amalgam/composite restoration)
-  { type: 'Extraction', color: '#8B0000' },     // Dark red (to indicate removed tooth)
-  { type: 'Implant', color: '#A9A9A9' },        // Metallic gray (titanium implant root)
-  { type: 'Crown (Zirconia)', color: '#F5F5F5' }, // Pearl white (realistic ceramic crown)
-  { type: 'CCM', color: '#90EE90' },            // Light green (base metal crown appearance)
-  { type: 'Bridge', color: '#A0522D' },         // Saddle brown (connects crowns across gap)
-  { type: 'Veneer', color: '#FFE4C4' },         // Beige (porcelain front layer)
-  { type: 'Inlay', color: '#B8860B' },          // Dark gold (fits in cavity)
-  { type: 'Onlay', color: '#DAA520' },          // Goldenrod (covers one cusp or more)
-  { type: 'Pulpotomy', color: '#FF8C00' },      // Dark orange (partial pulp treatment)
-  { type: 'Sealant', color: '#E0FFFF' },        // Light cyan / translucent blue (groove protector)
-  { type: 'Ortho Band', color: '#4682B4' },     // Steel blue (metallic orthodontic bands)
-  { type: 'Temporary', color: '#DCDCDC' },      // Gainsboro (pale gray temporary crowns)
-  { type: 'Missing', color: '#000000' }         // Black (tooth is gone)
-];
+import React, { useState, useEffect } from "react";
+import ProcedureItem from "./ProcedureItem";
+import { procedureCategories } from "../constants/procedureGroups";
+import { useToothStore } from "../store/useToothStore";
 
 export default function Toolbar() {
+  const patients = useToothStore((state) => state.patients);
+  const patientId = useToothStore((state) => state.patientId);
+  const patient = patients.find((p) => p._id === patientId);
+  const dentitionType = patient?.dentitionType || "adult";
+
+  const pedoCategory = procedureCategories.find(
+    (cat) => cat.title === "Pediatric (Pedo)"
+  );
+
+  const filteredCategories =
+    dentitionType === "child" ? (pedoCategory ? [pedoCategory] : []) : procedureCategories;
+
+  const [selectedCategoryIndex, setSelectedCategoryIndex] = useState(0);
+
+  useEffect(() => {
+    // Reset category index when switching patient type
+    setSelectedCategoryIndex(0);
+  }, [dentitionType]);
+
+  const selectedCategory = filteredCategories[selectedCategoryIndex];
+
+  if (!selectedCategory) return null;
+
   return (
-    <div className="flex gap-4 flex-wrap justify-center">
-      {procedures.map((proc) => (
-        <ProcedureItem key={proc.type} type={proc.type} color={proc.color} />
-      ))}
+    <div className="w-full max-w-4xl mx-auto">
+      {/* Dropdown filter — hidden for child patients */}
+      {dentitionType !== "child" && (
+        <div className="flex justify-center mb-4">
+          <select
+            value={selectedCategoryIndex}
+            onChange={(e) => setSelectedCategoryIndex(parseInt(e.target.value))}
+            className="border px-4 py-2 rounded text-sm shadow-sm bg-white"
+          >
+            {filteredCategories.map((cat, index) => (
+              <option key={cat.title} value={index}>
+                {cat.title}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* Selected Category Display */}
+      <div className="w-full">
+        <h3 className="text-md font-semibold text-gray-700 mb-2 text-center">
+          {selectedCategory.title}
+        </h3>
+        <div className="flex flex-wrap justify-center gap-3">
+          {selectedCategory.procedures.map((proc) => (
+            <ProcedureItem key={proc.type} type={proc.type} color={proc.color} />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

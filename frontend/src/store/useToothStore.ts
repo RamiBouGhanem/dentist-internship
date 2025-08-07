@@ -1,4 +1,4 @@
-// ✅ useToothStore.ts
+// store/useToothStore.ts
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import {
@@ -6,8 +6,8 @@ import {
   getPatientById,
   updatePatientProcedures,
 } from '../api/patientApi';
+import { validateProcedure } from '../utils/procedureRules';
 
-// Types
 export interface Procedure {
   type: string;
   createdAt?: string;
@@ -26,25 +26,34 @@ export interface Patient {
   teethData?: Record<string, Procedure[]>;
 }
 
+type ToothType = 'adult' | 'milk';
+
 interface ToothStore {
   teethData: Record<string, Procedure[]>;
   patientId: string | null;
   patients: Patient[];
 
-  selectedProcedure: { proc: Procedure; toothNumber: string } | null;
+  toothTypes: Record<string, ToothType>;
+  toggleToothType: (number: number) => void;
+  getActiveToothNumber: (tooth: number) => number;
+
+  selectedProcedure: {
+    proc: Procedure;
+    toothNumber: string;
+    displayTooth: string;
+  } | null;
   draftProcedure: { proc: Procedure; toothNumber: string } | null;
   noteModalVisible: boolean;
 
-  // UI state
   showTable: boolean;
   toggleTable: () => void;
 
-  setDraftProcedure: (proc: Procedure, toothNumber: string) => void;
+  setDraftProcedure: (proc: Procedure, toothNumber: string) => { allowed: boolean; reason?: string };
   clearDraftProcedure: () => void;
   showNoteModal: () => void;
   hideNoteModal: () => void;
 
-  saveNoteAndAddProcedure: (note: string) => Promise<void>;
+  saveNoteAndAddProcedure: (note: string) => Promise<{ allowed: boolean; reason?: string }>;
 
   setSelectedProcedure: (proc: Procedure, toothNumber: string) => void;
   clearSelectedProcedure: () => void;
@@ -72,16 +81,51 @@ export const useToothStore = create<ToothStore>()(
       patientId: null,
       patients: [],
 
+      toothTypes: {},
+      toggleToothType: (number) => {
+        set((state) => {
+          const current = state.toothTypes[number.toString()] || 'adult';
+          return {
+            toothTypes: {
+              ...state.toothTypes,
+              [number.toString()]: current === 'adult' ? 'milk' : 'adult',
+            },
+          };
+        });
+      },
+
+      getActiveToothNumber: (tooth) => {
+        const { toothTypes } = get();
+        if (toothTypes[tooth.toString()] === 'milk') {
+          const map: Record<number, number> = {
+            15: 51, 14: 52, 13: 53, 12: 54, 11: 55,
+            21: 61, 22: 62, 23: 63, 24: 64, 25: 65,
+            35: 71, 34: 72, 33: 73, 32: 74, 31: 75,
+            41: 81, 42: 82, 43: 83, 44: 84, 45: 85,
+          };
+
+          return map[tooth] || tooth;
+        }
+        return tooth;
+      },
+
       selectedProcedure: null,
       draftProcedure: null,
       noteModalVisible: false,
 
-      // UI state
       showTable: true,
       toggleTable: () => set((state) => ({ showTable: !state.showTable })),
 
-      setDraftProcedure: (proc, toothNumber) =>
-        set({ draftProcedure: { proc, toothNumber } }),
+      setDraftProcedure: (proc, toothNumber) => {
+        const state = get();
+        const activeTooth = state.getActiveToothNumber(Number(toothNumber)).toString();
+        const existing = state.teethData[activeTooth] || [];
+        const result = validateProcedure(existing, proc);
+        if (!result.allowed) return result;
+        set({ draftProcedure: { proc, toothNumber: activeTooth } });
+        return { allowed: true };
+      },
+
       clearDraftProcedure: () => set({ draftProcedure: null }),
       showNoteModal: () => set({ noteModalVisible: true }),
       hideNoteModal: () => set({ noteModalVisible: false }),
@@ -89,12 +133,14 @@ export const useToothStore = create<ToothStore>()(
       saveNoteAndAddProcedure: async (note) => {
         const state = get();
         const draft = state.draftProcedure;
-        if (!draft) return;
+        if (!draft) return { allowed: false, reason: 'No draft procedure selected.' };
 
-        // ✅ Get dentist details from localStorage
+        const existing = state.teethData[draft.toothNumber] || [];
+        const result = validateProcedure(existing, draft.proc);
+        if (!result.allowed) return result;
+
         const dentistId = localStorage.getItem('dentistId') || '';
         const dentistName = localStorage.getItem('dentistName') || 'Unknown';
-
         const now = new Date().toISOString();
 
         const newProcedure: Procedure = {
@@ -105,7 +151,6 @@ export const useToothStore = create<ToothStore>()(
           dentistName,
         };
 
-        const existing = state.teethData[draft.toothNumber] || [];
         const updatedTeethData = {
           ...state.teethData,
           [draft.toothNumber]: [...existing, newProcedure],
@@ -124,18 +169,35 @@ export const useToothStore = create<ToothStore>()(
             console.error('Failed to save procedure:', err);
           }
         }
+
+        return { allowed: true };
       },
 
-      setSelectedProcedure: (proc, toothNumber) =>
-        set({ selectedProcedure: { proc, toothNumber } }),
+      setSelectedProcedure: (proc, toothNumber) => {
+        const state = get();
+        const active = state.getActiveToothNumber(Number(toothNumber));
+        const isMilk = active >= 51 && active <= 85;
+        const map: Record<number, string> = {
+          55: 'A', 54: 'B', 53: 'C', 52: 'D', 51: 'E',
+          61: 'F', 62: 'G', 63: 'H', 64: 'I', 65: 'J',
+          75: 'K', 74: 'L', 73: 'M', 72: 'N', 71: 'O',
+          81: 'P', 82: 'Q', 83: 'R', 84: 'S', 85: 'T',
+        };
+
+        const displayTooth = isMilk ? map[active] || toothNumber : toothNumber;
+        set({ selectedProcedure: { proc, toothNumber: active.toString(), displayTooth } });
+      },
+
       clearSelectedProcedure: () => set({ selectedProcedure: null }),
 
-      addProcedureToTooth: async (number, item) => {
-        // ✅ Get dentist details from localStorage
+      addProcedureToTooth: async (tooth, item) => {
+        const state = get();
+        const activeTooth = state.getActiveToothNumber(Number(tooth)).toString();
+
         const dentistId = localStorage.getItem('dentistId') || '';
         const dentistName = localStorage.getItem('dentistName') || 'Unknown';
-
         const now = new Date().toISOString();
+
         const newProcedure = {
           ...item,
           createdAt: now,
@@ -144,11 +206,10 @@ export const useToothStore = create<ToothStore>()(
           dentistName,
         };
 
-        const state = get();
-        const existing = state.teethData[number] || [];
+        const existing = state.teethData[activeTooth] || [];
         const updatedTeethData = {
           ...state.teethData,
-          [number]: [...existing, newProcedure],
+          [activeTooth]: [...existing, newProcedure],
         };
 
         set({ teethData: updatedTeethData });
@@ -162,14 +223,15 @@ export const useToothStore = create<ToothStore>()(
         }
       },
 
-      removeProcedureFromTooth: async (number, index) => {
+      removeProcedureFromTooth: async (tooth, index) => {
         const state = get();
-        const updated = [...(state.teethData[number] || [])];
+        const activeTooth = state.getActiveToothNumber(Number(tooth)).toString();
+        const updated = [...(state.teethData[activeTooth] || [])];
         updated.splice(index, 1);
 
         const updatedTeethData = {
           ...state.teethData,
-          [number]: updated,
+          [activeTooth]: updated,
         };
 
         set({ teethData: updatedTeethData });
@@ -183,7 +245,6 @@ export const useToothStore = create<ToothStore>()(
         }
       },
 
-      // ✅ New function for updating comment (notes)
       updateProcedureNote: async (toothNumber, index, note) => {
         const state = get();
         const updated = [...(state.teethData[toothNumber] || [])];

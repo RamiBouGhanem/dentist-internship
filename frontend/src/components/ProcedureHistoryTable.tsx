@@ -25,7 +25,20 @@ export default function ProcedureHistoryTable() {
   if (!patientId) return null;
   const patient = patients.find((p) => p._id === patientId);
 
-  // Build history array
+  // ✅ Convert primary tooth number to letter
+  const convertPrimaryNumberToLetter = (num: number | string): string => {
+    const map: Record<number, string> = {
+      51: "A", 52: "B", 53: "C", 54: "D", 55: "E",
+      61: "F", 62: "G", 63: "H", 64: "I", 65: "J",
+      71: "K", 72: "L", 73: "M", 74: "N", 75: "O",
+      81: "P", 82: "Q", 83: "R", 84: "S", 85: "T",
+    };
+
+    const toothNumber = typeof num === "string" ? parseInt(num, 10) : num;
+    return map[toothNumber] || num.toString();
+  };
+
+  // Build full history list
   const history: {
     id: string;
     tooth: string;
@@ -44,14 +57,14 @@ export default function ProcedureHistoryTable() {
     });
   }
 
-  // Sort by date (newest first)
+  // Sort by date DESC
   history.sort((a, b) => {
-    const dateA = new Date(a.proc.createdAt || 0).getTime();
-    const dateB = new Date(b.proc.createdAt || 0).getTime();
+    const dateA = a.proc.createdAt ? new Date(a.proc.createdAt).getTime() : 0;
+    const dateB = b.proc.createdAt ? new Date(b.proc.createdAt).getTime() : 0;
     return dateB - dateA;
   });
 
-  // Apply filter
+  // Apply search filter
   const filtered = history.filter(({ tooth, proc }) => {
     const search = filter.toLowerCase();
     return (
@@ -61,7 +74,6 @@ export default function ProcedureHistoryTable() {
     );
   });
 
-  // Save comment on Enter
   const handleEnterSave = async (
     e: React.KeyboardEvent<HTMLInputElement>,
     tooth: string,
@@ -126,7 +138,6 @@ export default function ProcedureHistoryTable() {
               </tr>
             ) : (
               filtered.map(({ id, tooth, proc, idx }, rowIndex) => {
-                // Restriction: cannot edit or delete after 24hrs
                 const canEdit =
                   new Date().getTime() -
                     new Date(proc.createdAt || new Date()).getTime() <=
@@ -150,14 +161,16 @@ export default function ProcedureHistoryTable() {
                       </span>
                     </td>
                     <td className="px-4 py-2 text-center font-semibold">
-                      {tooth}
+                      <span title={`FDI: ${tooth}`}>
+                        {convertPrimaryNumberToLetter(tooth)}
+                      </span>
                     </td>
                     <td className="px-4 py-2 text-center">
                       {proc.createdAt
                         ? new Date(proc.createdAt).toLocaleString()
                         : "—"}
                     </td>
-                    {/* Comment + Edit icon */}
+                    {/* Comment */}
                     <td className="px-4 py-2">
                       {editingId === id ? (
                         <input
@@ -201,7 +214,7 @@ export default function ProcedureHistoryTable() {
                         </div>
                       )}
                     </td>
-                    {/* Delete button */}
+                    {/* Delete */}
                     <td className="px-4 py-2 text-center">
                       <button
                         onClick={() => {

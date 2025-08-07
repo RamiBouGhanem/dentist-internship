@@ -15,6 +15,9 @@ export class Patient {
   @Prop()
   gender?: string;
 
+  @Prop({ enum: ['child', 'mixed', 'adult'], default: 'adult' })
+  dentitionType: 'child' | 'mixed' | 'adult';
+
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Dentist', required: true })
   dentistId: string;
 
