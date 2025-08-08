@@ -16,6 +16,9 @@ export interface Procedure {
   dentistName?: string;
   x?: number;
   y?: number;
+  // NOTE: We intentionally don't type `color` here to avoid breaking places where it's omitted,
+  // but you can still pass a `color` property at runtime for overlays like Bridge.
+  // color?: string;
 }
 
 export interface Patient {
@@ -27,6 +30,9 @@ export interface Patient {
 }
 
 type ToothType = 'adult' | 'milk';
+
+// ✅ Bridge 2-step draft state
+type BridgeDraft = { startTooth: number; color: string } | null;
 
 interface ToothStore {
   teethData: Record<string, Procedure[]>;
@@ -72,6 +78,12 @@ interface ToothStore {
   fetchPatients: () => Promise<void>;
 
   addPatient: (patient: Patient) => void;
+
+  // ✅ Bridge draft actions
+  bridgeDraft: BridgeDraft;
+  startBridgeDraft: (startTooth: number, color: string) => void;
+  cancelBridgeDraft: () => void;
+  finalizeBridge: (endTooth: number) => { ok: true } | { ok: false; reason: string };
 }
 
 export const useToothStore = create<ToothStore>()(
@@ -103,7 +115,6 @@ export const useToothStore = create<ToothStore>()(
             35: 71, 34: 72, 33: 73, 32: 74, 31: 75,
             41: 81, 42: 82, 43: 83, 44: 84, 45: 85,
           };
-
           return map[tooth] || tooth;
         }
         return tooth;
@@ -190,6 +201,7 @@ export const useToothStore = create<ToothStore>()(
 
       clearSelectedProcedure: () => set({ selectedProcedure: null }),
 
+      // ✅ Keep existing helper but preserve provided notes if present
       addProcedureToTooth: async (tooth, item) => {
         const state = get();
         const activeTooth = state.getActiveToothNumber(Number(tooth)).toString();
@@ -198,10 +210,10 @@ export const useToothStore = create<ToothStore>()(
         const dentistName = localStorage.getItem('dentistName') || 'Unknown';
         const now = new Date().toISOString();
 
-        const newProcedure = {
+        const newProcedure: Procedure = {
           ...item,
           createdAt: now,
-          notes: '',
+          notes: item.notes ?? '', // keep provided notes (e.g., "Bridge 14–16")
           dentistId,
           dentistName,
         };
@@ -296,6 +308,58 @@ export const useToothStore = create<ToothStore>()(
         set((state) => ({
           patients: [...state.patients, patient],
         })),
+
+      // ============================
+      // ✅ Bridge 2-step interaction
+      // ============================
+      bridgeDraft: null,
+
+      startBridgeDraft: (startTooth, color) => {
+        set(() => ({ bridgeDraft: { startTooth, color } }));
+      },
+
+      cancelBridgeDraft: () => set(() => ({ bridgeDraft: null })),
+
+      finalizeBridge: (endTooth) => {
+        const { bridgeDraft, addProcedureToTooth } = get();
+        if (!bridgeDraft) return { ok: false, reason: 'No bridge in progress.' };
+
+        const { startTooth, color } = bridgeDraft;
+
+        // Arch rows in UI order so lines form a continuous bar across teeth
+        const upperRow = [18,17,16,15,14,13,12,11,21,22,23,24,25,26,27,28];
+        const lowerRow = [48,47,46,45,44,43,42,41,31,32,33,34,35,36,37,38];
+
+        const idx = (t: number, row: number[]) => row.indexOf(t);
+        const su = idx(startTooth, upperRow), eu = idx(endTooth, upperRow);
+        const sl = idx(startTooth, lowerRow), el = idx(endTooth, lowerRow);
+
+        let row: number[] | null = null;
+        let i1 = -1, i2 = -1;
+
+        if (su !== -1 && eu !== -1) { row = upperRow; i1 = su; i2 = eu; }
+        else if (sl !== -1 && el !== -1) { row = lowerRow; i1 = sl; i2 = el; }
+        else {
+          set(() => ({ bridgeDraft: null }));
+          return { ok: false, reason: 'Bridge must stay on the same arch (upper or lower).' };
+        }
+
+        const [from, to] = i1 <= i2 ? [i1, i2] : [i2, i1];
+        const span = row.slice(from, to + 1);
+
+        // Apply Bridge segment to every tooth in the span.
+        // We keep a note like "Bridge 14–16" for clarity/history.
+        const noteLabel = `Bridge ${row[from]}–${row[to]}`;
+
+        // Add synchronously in sequence; persistence happens inside addProcedureToTooth.
+        span.forEach((tooth) => {
+          // @ts-ignore - allow color passthrough even if not in interface
+          addProcedureToTooth(tooth.toString(), { type: 'Bridge', notes: noteLabel, color });
+        });
+
+        set(() => ({ bridgeDraft: null }));
+        return { ok: true };
+      },
     }),
     {
       name: 'teeth-storage',

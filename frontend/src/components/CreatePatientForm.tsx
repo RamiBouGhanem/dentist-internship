@@ -9,11 +9,12 @@ interface CreatePatientFormProps {
 }
 
 export default function CreatePatientForm({ onSuccess }: CreatePatientFormProps) {
+  // Update form state to remove 'mixed' from dentitionType
   const [form, setForm] = useState<{
     name: string;
     age: number;
     gender: 'male' | 'female';
-    dentitionType: 'child' | 'mixed' | 'adult';
+    dentitionType: 'child' | 'adult';
   }>({
     name: '',
     age: 0,
@@ -37,7 +38,8 @@ export default function CreatePatientForm({ onSuccess }: CreatePatientFormProps)
     setForm((prev) => ({ ...prev, gender }));
   };
 
-  const handleDentitionToggle = (dentitionType: 'child' | 'mixed' | 'adult') => {
+  // Update dentition toggle function to only handle 'child' and 'adult'
+  const handleDentitionToggle = (dentitionType: 'child' | 'adult') => {
     setForm((prev) => ({ ...prev, dentitionType }));
   };
 
@@ -46,7 +48,8 @@ export default function CreatePatientForm({ onSuccess }: CreatePatientFormProps)
 
     const newErrors: { [key: string]: string } = {};
     if (!form.name.trim()) newErrors.name = 'Name is required';
-    if (!form.age) newErrors.age = 'Age is required';
+    // Validate age is a number and greater than 0
+    if (form.age === 0 || isNaN(form.age)) newErrors.age = 'Age is required';
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -55,7 +58,8 @@ export default function CreatePatientForm({ onSuccess }: CreatePatientFormProps)
 
     const dentistId = localStorage.getItem('dentistId');
     if (!dentistId) {
-      alert('No logged-in dentist');
+      // Replaced alert with console.error as per instructions
+      console.error('No logged-in dentist');
       return;
     }
 
@@ -181,18 +185,6 @@ export default function CreatePatientForm({ onSuccess }: CreatePatientFormProps)
           </button>
           <button
             type="button"
-            onClick={() => handleDentitionToggle('mixed')}
-            className={`px-4 py-2 rounded-full border text-sm font-medium transition 
-              ${
-                form.dentitionType === 'mixed'
-                  ? 'bg-green-600 text-white border-green-600 shadow-sm'
-                  : 'bg-neutral-100 text-neutral-700 border-gray-300 hover:bg-neutral-200'
-              }`}
-          >
-            Mixed
-          </button>
-          <button
-            type="button"
             onClick={() => handleDentitionToggle('adult')}
             className={`px-4 py-2 rounded-full border text-sm font-medium transition 
               ${
@@ -220,5 +212,5 @@ export default function CreatePatientForm({ onSuccess }: CreatePatientFormProps)
         </div>
       )}
     </form>
-  );x
+  );
 }

@@ -7,30 +7,39 @@ import { Repeat2 } from "lucide-react";
 import { Dialog } from "@headlessui/react";
 
 const pairedTeeth = [
-  // Upper LEFT to RIGHT (adult 28 → 18)
-  { adult: 28, milk: null }, { adult: 27, milk: null }, { adult: 26, milk: null },
-  { adult: 25, milk: 65 }, { adult: 24, milk: 64 }, { adult: 23, milk: 63 },
-  { adult: 22, milk: 62 }, { adult: 21, milk: 61 }, { adult: 11, milk: 55 },
-  { adult: 12, milk: 54 }, { adult: 13, milk: 53 }, { adult: 14, milk: 52 },
-  { adult: 15, milk: 51 }, { adult: 16, milk: null }, { adult: 17, milk: null },
-  { adult: 18, milk: null },
+  // Upper LEFT (1st quadrant)
+  { adult: 18, milk: null }, { adult: 17, milk: null }, { adult: 16, milk: null },
+  { adult: 15, milk: 51 }, { adult: 14, milk: 52 }, { adult: 13, milk: 53 },
+  { adult: 12, milk: 54 }, { adult: 11, milk: 55 },
 
-  // Lower left to right (38 → 48)
-  { adult: 38, milk: null }, { adult: 37, milk: null }, { adult: 36, milk: null },
-  { adult: 35, milk: 71 }, { adult: 34, milk: 72 }, { adult: 33, milk: 73 },
-  { adult: 32, milk: 74 }, { adult: 31, milk: 75 }, { adult: 41, milk: 81 },
-  { adult: 42, milk: 82 }, { adult: 43, milk: 83 }, { adult: 44, milk: 84 },
-  { adult: 45, milk: 85 }, { adult: 46, milk: null }, { adult: 47, milk: null },
-  { adult: 48, milk: null },
+  // Upper RIGHT (2nd quadrant)
+  { adult: 21, milk: 61 }, { adult: 22, milk: 62 }, { adult: 23, milk: 63 },
+  { adult: 24, milk: 64 }, { adult: 25, milk: 65 }, { adult: 26, milk: null },
+  { adult: 27, milk: null }, { adult: 28, milk: null },
+
+  // Lower RIGHT (3rd quadrant)
+  { adult: 31, milk: 75 }, { adult: 32, milk: 74 }, { adult: 33, milk: 73 },
+  { adult: 34, milk: 72 }, { adult: 35, milk: 71 }, { adult: 36, milk: null },
+  { adult: 37, milk: null }, { adult: 38, milk: null },
+
+  // Lower LEFT (4th quadrant)
+  { adult: 48, milk: null }, { adult: 47, milk: null }, { adult: 46, milk: null },
+  { adult: 45, milk: 85 }, { adult: 44, milk: 84 }, { adult: 43, milk: 83 },
+  { adult: 42, milk: 82 }, { adult: 41, milk: 81 },
 ];
 
+const excludedTeeth = [18, 17, 16, 26, 27, 28, 36, 37, 38, 46, 47, 48];
+
 export default function ToothChart() {
-  const { toothTypes, toggleToothType, hasModalOpen } = useToothStore();
+  const { toothTypes, toggleToothType, hasModalOpen, patientId, patients } = useToothStore();
 
   const [confirmToggle, setConfirmToggle] = useState<null | {
     adult: number;
     isMilk: boolean;
   }>(null);
+
+  const currentPatient = patients.find((p) => p._id === patientId);
+  const isChild = currentPatient?.dentitionType === "child";
 
   const handleToggleClick = (adult: number, isCurrentlyMilk: boolean) => {
     setConfirmToggle({ adult, isMilk: isCurrentlyMilk });
@@ -51,11 +60,12 @@ export default function ToothChart() {
     const isMilk = toothTypes[adult.toString()] === "milk";
     const active = isMilk && milk ? milk : adult;
     const passive = isMilk && milk ? adult : milk;
+    const isExcluded = isChild && excludedTeeth.includes(adult);
 
     return (
       <div
         key={adult}
-        className="relative w-[44px] h-[44px] group"
+        className={`relative w-[44px] h-[44px] group ${isExcluded ? "opacity-30 pointer-events-none" : ""}`}
       >
         {passive && (
           <div className="absolute inset-0 z-0 opacity-20 pointer-events-none">
@@ -64,14 +74,14 @@ export default function ToothChart() {
         )}
 
         <div className="absolute inset-0 z-10">
-          <Tooth number={active} allowToggle={!!milk} />
+          <Tooth number={active} allowToggle={!!milk && !isExcluded} />
         </div>
 
         {milk && (
           <button
             onClick={() => handleToggleClick(adult, isMilk)}
             title="Toggle between adult and milk tooth"
-            className="absolute top-0.5 right-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-20 bg-white border border-gray-300 rounded p-0.5 shadow hover:bg-gray-100"
+            className={`absolute top-0.5 right-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-20 bg-white border border-gray-300 rounded p-0.5 shadow hover:bg-gray-100 ${isExcluded ? "hidden" : ""}`}
           >
             <Repeat2 className="w-4 h-4 text-gray-600" />
           </button>
@@ -80,22 +90,39 @@ export default function ToothChart() {
     );
   };
 
+  const upperLeftQuadrant = pairedTeeth.slice(0, 8);
+  const upperRightQuadrant = pairedTeeth.slice(8, 16);
+  const lowerRightQuadrant = pairedTeeth.slice(16, 24);
+  const lowerLeftQuadrant = pairedTeeth.slice(24, 32);
+
   return (
     <div
       className={`flex flex-col gap-20 items-center justify-center px-2 sm:px-6 py-4 transition ${
         hasModalOpen ? "pointer-events-none blur-[1px]" : ""
       }`}
     >
-      <div className="flex flex-row-reverse gap-8 max-w-full justify-center">
-        {pairedTeeth.slice(0, 16).map(({ adult, milk }) =>
-          renderToothBlock(adult, milk)
-        )}
+      {/* Upper teeth row */}
+      <div className="flex flex-row gap-16 max-w-full justify-center mt-8">
+        {/* Upper Left quadrant (18-11) */}
+        <div className="flex flex-row gap-8">
+          {upperLeftQuadrant.map(({ adult, milk }) => renderToothBlock(adult, milk))}
+        </div>
+        {/* Upper Right quadrant (21-28) */}
+        <div className="flex flex-row gap-8">
+          {upperRightQuadrant.map(({ adult, milk }) => renderToothBlock(adult, milk))}
+        </div>
       </div>
 
-      <div className="flex flex-row-reverse gap-8 max-w-full justify-center">
-        {pairedTeeth.slice(16).map(({ adult, milk }) =>
-          renderToothBlock(adult, milk)
-        )}
+      {/* Lower teeth row */}
+      <div className="flex flex-row gap-16 max-w-full justify-center mt-8 mb-4">
+        {/* Lower LEFT quadrant (48-41) */}
+        <div className="flex flex-row gap-8">
+          {lowerLeftQuadrant.map(({ adult, milk }) => renderToothBlock(adult, milk))}
+        </div>
+        {/* Lower RIGHT quadrant (31-38) */}
+        <div className="flex flex-row gap-8">
+          {lowerRightQuadrant.map(({ adult, milk }) => renderToothBlock(adult, milk))}
+        </div>
       </div>
 
       <ProcedureModal />

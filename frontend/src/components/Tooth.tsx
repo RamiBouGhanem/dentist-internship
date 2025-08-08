@@ -3,6 +3,7 @@ import { useDrop } from "react-dnd";
 import { useToothStore } from "../store/useToothStore";
 import { AlertTriangle } from "lucide-react";
 import { validateProcedure, Procedure } from "../utils/procedureRules";
+import { createPortal } from "react-dom";
 
 interface ToothProps {
   number: number;
@@ -17,6 +18,11 @@ export default function Tooth({ number }: ToothProps) {
     showNoteModal,
     patients,
     patientId,
+
+    bridgeDraft,
+    startBridgeDraft,
+    finalizeBridge,
+    cancelBridgeDraft,
   } = useToothStore();
 
   const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
@@ -28,10 +34,33 @@ export default function Tooth({ number }: ToothProps) {
   const patient = patients.find((p) => p._id === patientId);
   const dentitionType = patient?.dentitionType || "adult";
 
+  const [info, setInfo] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (deleteIndex !== null) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = prev;
+      };
+    }
+  }, [deleteIndex]);
+
   const [{ isOver }, drop] = useDrop<Procedure, void, { isOver: boolean }>(
     () => ({
       accept: "procedure",
       drop: (item) => {
+        if (item.type === "Bridge") {
+          // item may carry color from your ProcedureItem
+          // If your Procedure type doesn't include color, this cast is fine.
+          const color = (item as any).color || "#A0522D";
+          startBridgeDraft(number, color);
+          setInfo(
+            "Bridge in progress — click the ending tooth to complete the span and render the full bridge shape."
+          );
+          return;
+        }
+
         const result = validateProcedure(
           procedures,
           item,
@@ -63,6 +92,54 @@ export default function Tooth({ number }: ToothProps) {
   );
 
   drop(dropRef);
+
+  const isBridgeStart = bridgeDraft?.startTooth === number;
+
+  const finalizeIfBridge = (e: React.MouseEvent) => {
+    if (!bridgeDraft) return; // only act when a bridge is in progress
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (bridgeDraft.startTooth === number) {
+      setError("Choose a different tooth to finish the bridge.");
+      return;
+    }
+
+    const res = finalizeBridge(number);
+    if (!res.ok) setError(res.reason);
+  };
+
+  const handleToothClick = () => {
+    // Only do something if a bridge draft is in progress
+    if (!bridgeDraft) return;
+
+    // Avoid selecting the same tooth as end
+    if (bridgeDraft.startTooth === number) {
+      setError("Choose a different tooth to finish the bridge.");
+      return;
+    }
+
+    React.useEffect(() => {
+      if (!info) return;
+      const t = setTimeout(() => setInfo(null), 2500);
+      return () => clearTimeout(t);
+    }, [info]);
+
+    React.useEffect(() => {
+      const onKey = (e: KeyboardEvent) => {
+        if (e.key === "Escape" && bridgeDraft) {
+          cancelBridgeDraft();
+          setError(null);
+        }
+      };
+      window.addEventListener("keydown", onKey);
+      return () => window.removeEventListener("keydown", onKey);
+    }, [bridgeDraft, cancelBridgeDraft]);
+
+    const res = finalizeBridge(number);
+    if (!res.ok) setError(res.reason);
+    else setError(null);
+  };
 
   const handleDoubleRightClick = (event: React.MouseEvent, idx: number) => {
     event.preventDefault();
@@ -292,14 +369,13 @@ export default function Tooth({ number }: ToothProps) {
 
       case "Bridge":
         return (
-          <line
+          <rect
             {...sharedProps}
-            x1="0"
-            y1="60"
-            x2="100"
-            y2="60"
-            stroke={proc.color}
-            strokeWidth={4}
+            x="-25" // extend far to the left
+            y="55" // same vertical position as before
+            width="140" // much wider — will overlap adjacent tooth bridge
+            height="5" // keep same thickness
+            fill={proc.color}
           />
         );
 
@@ -641,115 +717,148 @@ export default function Tooth({ number }: ToothProps) {
   };
 
   return (
-  <>
-    <div
-      ref={dropRef}
-      className={`w-16 h-24 flex flex-col items-center text-xs font-semibold text-center relative transition-all ${
-        isOver
-          ? "scale-110 shadow-xl ring-2 ring-blue-400 bg-blue-50"
-          : "bg-transparent"
-      } ${deleteIndex !== null || error ? "pointer-events-none" : ""}`}
-    >
-      {/* Tooth number: blue for milk, gray for adult */}
-      <div className={isMilkTooth ? "text-blue-600" : "text-gray-800"}>
-        {isMilkTooth ? milkToothLabels[number] : number}
-      </div>
-
-      <svg viewBox="0 0 100 140" className="w-14 h-20">
-        <defs>
-          <linearGradient id="toothCrownGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="hsl(0, 0%, 100%)" />
-            <stop offset="100%" stopColor="hsl(0, 0%, 90%)" />
-          </linearGradient>
-          <linearGradient id="toothRootGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="hsl(40, 60%, 90%)" />
-            <stop offset="100%" stopColor="hsl(40, 40%, 70%)" />
-          </linearGradient>
-        </defs>
-        <g transform="translate(100 140) scale(-1 -1) translate(0 10)">
-          {/* Base tooth */}
-          <path
-            d="M50 0 C25 5, 15 25, 20 45 C25 60, 35 70, 50 70 C65 70, 75 60, 80 45 C85 25, 75 5, 50 0 Z"
-            fill="url(#toothCrownGradient)"
-          />
-          <path
-            d="M45 70 C35 75, 25 85, 28 100 C30 115, 38 128, 45 130 L45 70 Z"
-            fill="url(#toothRootGradient)"
-          />
-          <path
-            d="M55 70 C65 75, 75 85, 72 100 C70 115, 62 128, 55 130 L55 70 Z"
-            fill="url(#toothRootGradient)"
-          />
-          {procedures.map((p, i) => renderOverlay(p, i))}
-        </g>
-      </svg>
-    </div>
-
-    {/* Delete Modal */}
-  {deleteIndex !== null && (
-  <div className="fixed inset-0 z-[9999] flex items-center justify-center">
-    {/* Backdrop */}
-    <div
-      className="absolute inset-0 bg-black bg-opacity-60 backdrop-blur-sm"
-      onClick={cancelDelete}
-    />
-
-    {/* Modal box */}
-    <div className="relative z-[10000] bg-white rounded-xl shadow-2xl p-6 w-[400px]">
-      <div className="flex items-center mb-4">
-        <AlertTriangle className="text-red-600 w-6 h-6 mr-2" />
-        <h2 className="text-lg font-semibold text-gray-800">
-          Confirm Deletion
-        </h2>
-      </div>
-      <p className="text-gray-700 mb-4">
-        Are you sure you want to remove{" "}
-        <span className="font-bold text-red-500">
-          {procedures[deleteIndex].type}
-        </span>
-        ?
-      </p>
-      <div className="flex justify-end gap-2">
-        <button onClick={cancelDelete} className="px-4 py-2 border rounded">
-          Cancel
-        </button>
-        <button
-          onClick={confirmDelete}
-          className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-        >
-          Delete
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-
-
-    {/* Error Modal */}
-    {error && (
-      <div className="fixed inset-0 flex items-center justify-center z-[9999]">
-        <div
-          className="absolute inset-0 bg-black bg-opacity-40 z-[9998]"
-          onClick={() => setError(null)}
-        />
-        <div className="relative z-[9999] bg-white rounded-xl shadow-2xl p-6 w-[400px]">
-          <div className="flex items-center mb-4">
-            <AlertTriangle className="text-red-600 w-6 h-6 mr-2" />
-            <h2 className="text-lg font-semibold text-gray-800">
-              Procedure Not Allowed
-            </h2>
-          </div>
-          <p className="text-gray-700 mb-4">{error}</p>
-          <div className="flex justify-end">
-            <button
-              onClick={() => setError(null)}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-            >
-              OK
-            </button>
-          </div>
+    <>
+      <div
+        ref={dropRef}
+        onMouseDownCapture={finalizeIfBridge} // if you added the capture finalize
+        className={`w-16 h-24 flex flex-col items-center text-xs font-semibold text-center relative transition-all ${
+          isOver
+            ? "scale-110 shadow-xl ring-2 ring-blue-400 bg-blue-50"
+            : "bg-transparent"
+        } ${deleteIndex !== null || error ? "pointer-events-none" : ""} ${
+          isBridgeStart
+            ? "ring-2 ring-amber-500 ring-offset-2 ring-offset-white animate-pulse"
+            : ""
+        }`}
+      >
+        {/* Tooth number: blue for milk, gray for adult */}
+        <div className={isMilkTooth ? "text-blue-600" : "text-gray-800"}>
+          {isMilkTooth ? milkToothLabels[number] : number}
         </div>
+
+        <svg viewBox="0 0 100 140" className="w-14 h-20 overflow-visible">
+          <defs>
+            <linearGradient
+              id="toothCrownGradient"
+              x1="0%"
+              y1="0%"
+              x2="0%"
+              y2="100%"
+            >
+              <stop offset="0%" stopColor="hsl(0, 0%, 100%)" />
+              <stop offset="100%" stopColor="hsl(0, 0%, 90%)" />
+            </linearGradient>
+            <linearGradient
+              id="toothRootGradient"
+              x1="0%"
+              y1="0%"
+              x2="0%"
+              y2="100%"
+            >
+              <stop offset="0%" stopColor="hsl(40, 60%, 90%)" />
+              <stop offset="100%" stopColor="hsl(40, 40%, 70%)" />
+            </linearGradient>
+          </defs>
+          <g transform="translate(100 140) scale(-1 -1) translate(0 10)">
+            {/* Base tooth */}
+            <path
+              d="M50 0 C25 5, 15 25, 20 45 C25 60, 35 70, 50 70 C65 70, 75 60, 80 45 C85 25, 75 5, 50 0 Z"
+              fill="url(#toothCrownGradient)"
+            />
+            <path
+              d="M45 70 C35 75, 25 85, 28 100 C30 115, 38 128, 45 130 L45 70 Z"
+              fill="url(#toothRootGradient)"
+            />
+            <path
+              d="M55 70 C65 75, 75 85, 72 100 C70 115, 62 128, 55 130 L55 70 Z"
+              fill="url(#toothRootGradient)"
+            />
+            {procedures.map((p, i) => renderOverlay(p, i))}
+          </g>
+        </svg>
       </div>
-    )}
-  </>
-)};
+
+      {/* Delete Modal (portalized to escape stacking contexts) */}
+      {deleteIndex !== null &&
+        createPortal(
+          <div className="fixed inset-0 z-[50000] flex items-center justify-center">
+            {/* Backdrop */}
+            <div
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={cancelDelete}
+            />
+            {/* Modal box */}
+            <div
+              role="dialog"
+              aria-modal="true"
+              className="relative z-[50001] bg-white rounded-xl shadow-2xl p-6 w-[400px] max-w-[92vw]"
+            >
+              <div className="flex items-center mb-4">
+                <AlertTriangle className="text-red-600 w-6 h-6 mr-2" />
+                <h2 className="text-lg font-semibold text-gray-800">
+                  Confirm Deletion
+                </h2>
+              </div>
+
+              <p className="text-gray-700 mb-4">
+                Are you sure you want to remove{" "}
+                <span className="font-bold text-red-500">
+                  {procedures[deleteIndex].type}
+                </span>
+                ?
+              </p>
+
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={cancelDelete}
+                  className="px-4 py-2 border rounded"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* Error Modal (portalized) */}
+      {error &&
+        createPortal(
+          <div className="fixed inset-0 z-[50000] flex items-center justify-center">
+            <div
+              className="absolute inset-0 bg-black/40"
+              onClick={() => setError(null)}
+            />
+            <div
+              role="dialog"
+              aria-modal="true"
+              className="relative z-[50001] bg-white rounded-xl shadow-2xl p-6 w-[400px] max-w-[92vw]"
+            >
+              <div className="flex items-center mb-4">
+                <AlertTriangle className="text-red-600 w-6 h-6 mr-2" />
+                <h2 className="text-lg font-semibold text-gray-800">
+                  Procedure Not Allowed
+                </h2>
+              </div>
+              <p className="text-gray-700 mb-4">{error}</p>
+              <div className="flex justify-end">
+                <button
+                  onClick={() => setError(null)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
+                  OK
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+    </>
+  );
+}
