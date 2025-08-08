@@ -1,5 +1,5 @@
-import React, { useRef } from "react";
-import { useDrag, DragPreviewImage } from "react-dnd";
+import React from "react";
+import { useToothStore } from "../store/useToothStore";
 
 interface ProcedureItemProps {
   type: string;
@@ -7,48 +7,31 @@ interface ProcedureItemProps {
 }
 
 export default function ProcedureItem({ type, color }: ProcedureItemProps) {
-  const dragRef = useRef<HTMLDivElement>(null);
+  const { selectedProcedureForAdd, selectProcedureForAdd, clearSelectedForAdd } = useToothStore();
 
-  const [{ isDragging }, drag, preview] = useDrag(() => ({
-    type: "procedure",
-    item: { type, color },
-    collect: (monitor) => ({
-      isDragging: !!monitor.isDragging(),
-    }),
-  }));
+  const isSelected = selectedProcedureForAdd?.type === type;
 
-  // SVG data URL preview with the color + label
-  const previewSrc = `data:image/svg+xml;utf8,
-    <svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'>
-      <circle cx='32' cy='32' r='28' fill='${encodeURIComponent(color)}' />
-      <text x='32' y='38' font-size='18' text-anchor='middle' fill='white' font-family='Arial'>${
-        type[0]
-      }</text>
-    </svg>
-  `;
+  const onClick = () => {
+    if (isSelected) {
+      clearSelectedForAdd();
+    } else {
+      // pass color so Bridge keeps the bar color
+      selectProcedureForAdd({ type, color });
+    }
+  };
 
   return (
-    <>
-      <DragPreviewImage
-        key={`${type}-${color}`}
-        connect={preview}
-        src={previewSrc}
-      />
-      <div
-        ref={(node) => {
-          if (node) drag(node);
-          dragRef.current = node;
-        }}
-        className="relative group w-16 h-16 rounded-full flex items-center justify-center text-white font-bold cursor-pointer shadow-md transition"
-        style={{ backgroundColor: color, opacity: isDragging ? 0.5 : 1 }}
-      >
-        {type[0]}
-
-        {/* Tooltip on hover */}
-        <div className="absolute bottom-full mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none whitespace-nowrap z-10">
-          {type}
-        </div>
-      </div>
-    </>
+    <button
+      onClick={onClick}
+      className={`w-full text-left px-3 py-2 rounded border shadow-sm transition
+        ${isSelected ? "ring-2 ring-indigo-500 bg-indigo-50" : "bg-white hover:bg-gray-50"}
+      `}
+      style={{ borderColor: isSelected ? "rgba(99,102,241,0.6)" : "#e5e7eb" }}
+      title={type}
+    >
+      <span className="inline-block w-3 h-3 rounded mr-2 align-middle" style={{ backgroundColor: color }} />
+      <span className="align-middle">{type}</span>
+      {isSelected && <span className="ml-2 text-xs text-indigo-600">(selected)</span>}
+    </button>
   );
 }

@@ -1,46 +1,55 @@
-import React, { useState } from 'react';
-import { DndProvider } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
+// src/App.tsx
+import React, { useState } from "react";
 
-import Header from './components/layout/Header';
-// import PatientSection from './components/layout/PatientSection';
-// import ToolbarSection from './components/layout/ToolbarSection';
-// import ToothChartSection from './components/layout/ToothChartSection';
-import ProcedureHistoryDrawer from './components/ProcedureHistoryTable';
-import NoteInputModal from './components/NoteInputModal';
-import PatientModal from './components/PatientModal';
-import Toolbar from './components/Toolbar';
-import ToothChart from './components/ToothChart';
-import PatientSelector from './components/PatientSelector';
+import Header from "./components/layout/Header";
+import ProcedureHistoryDrawer from "./components/ProcedureHistoryTable";
+import NoteInputModal from "./components/NoteInputModal";
+import PatientModal from "./components/PatientModal";
+import Toolbar from "./components/Toolbar";
+import ToothChart from "./components/ToothChart";
+import PatientSelector from "./components/PatientSelector";
 
 export default function App() {
   const [showHistory, setShowHistory] = useState(false);
 
   return (
-    <DndProvider backend={HTML5Backend}>
-      <div className="min-h-screen bg-gray-100 p-6">
-        {/* Header */}
+    <div className="min-h-screen bg-gray-100">
+      {/* Header */}
+      <div className="px-4 md:px-6 pt-6">
         <Header onShowHistory={() => setShowHistory(true)} />
-
-        {/* Modals */}
-        <PatientModal />
-        <NoteInputModal />
-
-        {/* Patient Selector Section */}
-        <PatientSelector />
-
-        {/* Toolbar */}
-        <Toolbar />
-
-        {/* Tooth Chart */}
-        <ToothChart />
-
-        {/* History Drawer */}
-        <ProcedureHistoryDrawer
-          open={showHistory}
-          onClose={() => setShowHistory(false)}
-        />
       </div>
-    </DndProvider>
+
+      {/* Global modals */}
+      <PatientModal />
+      <NoteInputModal />
+
+      {/* Patient selector */}
+      <div className="px-4 md:px-6 mt-4">
+        <PatientSelector />
+      </div>
+
+      {/* Workspace: Toolbar aside + Chart */}
+      <div className="px-4 md:px-6 pb-6 mt-4">
+        <div className="max-w-screen-xl mx-auto">
+          <div className="flex items-start gap-6">
+            {/* Sidebar (Toolbar) */}
+            <div className="sticky top-4">
+              <Toolbar />
+            </div>
+
+            {/* Main (Tooth chart) */}
+            <div className="flex-1 overflow-hidden">
+              <ToothChart />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* History Drawer */}
+      <ProcedureHistoryDrawer
+        open={showHistory}
+        onClose={() => setShowHistory(false)}
+      />
+    </div>
   );
 }

@@ -1,4 +1,3 @@
-// File: components/ToothChart.tsx
 import React, { useState } from "react";
 import Tooth from "./Tooth";
 import { useToothStore } from "../store/useToothStore";
@@ -7,22 +6,24 @@ import { Repeat2 } from "lucide-react";
 import { Dialog } from "@headlessui/react";
 
 const pairedTeeth = [
-  // Upper LEFT (1st quadrant)
+  // Upper LEFT (1st quadrant on screen) — adult 18 → 11
+  // Fix 50s mapping so left→right shows 55,54,53,52,51 when milk is active
   { adult: 18, milk: null }, { adult: 17, milk: null }, { adult: 16, milk: null },
-  { adult: 15, milk: 51 }, { adult: 14, milk: 52 }, { adult: 13, milk: 53 },
-  { adult: 12, milk: 54 }, { adult: 11, milk: 55 },
+  { adult: 15, milk: 55 }, { adult: 14, milk: 54 }, { adult: 13, milk: 53 },
+  { adult: 12, milk: 52 }, { adult: 11, milk: 51 },
 
-  // Upper RIGHT (2nd quadrant)
+  // Upper RIGHT (2nd quadrant on screen) — 21 → 28 (60s already correct: 61 → 65)
   { adult: 21, milk: 61 }, { adult: 22, milk: 62 }, { adult: 23, milk: 63 },
   { adult: 24, milk: 64 }, { adult: 25, milk: 65 }, { adult: 26, milk: null },
   { adult: 27, milk: null }, { adult: 28, milk: null },
 
-  // Lower RIGHT (3rd quadrant)
-  { adult: 31, milk: 75 }, { adult: 32, milk: 74 }, { adult: 33, milk: 73 },
-  { adult: 34, milk: 72 }, { adult: 35, milk: 71 }, { adult: 36, milk: null },
+  // Lower RIGHT (3rd quadrant on screen) — 31 → 38
+  // Fix 70s mapping so left→right shows 71,72,73,74,75 when milk is active
+  { adult: 31, milk: 71 }, { adult: 32, milk: 72 }, { adult: 33, milk: 73 },
+  { adult: 34, milk: 74 }, { adult: 35, milk: 75 }, { adult: 36, milk: null },
   { adult: 37, milk: null }, { adult: 38, milk: null },
 
-  // Lower LEFT (4th quadrant)
+  // Lower LEFT (4th quadrant on screen) — 48 → 41 (80s already correct: 81 → 85)
   { adult: 48, milk: null }, { adult: 47, milk: null }, { adult: 46, milk: null },
   { adult: 45, milk: 85 }, { adult: 44, milk: 84 }, { adult: 43, milk: 83 },
   { adult: 42, milk: 82 }, { adult: 41, milk: 81 },
@@ -57,7 +58,10 @@ export default function ToothChart() {
   };
 
   const renderToothBlock = (adult: number, milk: number | null) => {
-    const isMilk = toothTypes[adult.toString()] === "milk";
+    const stored = toothTypes[adult.toString()];
+    const forcedMilk = isChild && milk && stored === undefined;
+    const isMilk = forcedMilk || stored === "milk";
+
     const active = isMilk && milk ? milk : adult;
     const passive = isMilk && milk ? adult : milk;
     const isExcluded = isChild && excludedTeeth.includes(adult);
@@ -97,30 +101,30 @@ export default function ToothChart() {
 
   return (
     <div
-      className={`flex flex-col gap-20 items-center justify-center px-2 sm:px-6 py-4 transition ${
-        hasModalOpen ? "pointer-events-none blur-[1px]" : ""
+      className={`flex flex-col gap-12 items-center justify-center px-2 sm:px-6 py-4 transition mt-12${
+        hasModalOpen ? " pointer-events-none blur-[1px]" : ""
       }`}
     >
       {/* Upper teeth row */}
-      <div className="flex flex-row gap-16 max-w-full justify-center mt-8">
+      <div className="flex flex-row gap-6 max-w-full justify-center mt-8">
         {/* Upper Left quadrant (18-11) */}
-        <div className="flex flex-row gap-8">
+        <div className="flex flex-row gap-4">
           {upperLeftQuadrant.map(({ adult, milk }) => renderToothBlock(adult, milk))}
         </div>
         {/* Upper Right quadrant (21-28) */}
-        <div className="flex flex-row gap-8">
+        <div className="flex flex-row gap-4">
           {upperRightQuadrant.map(({ adult, milk }) => renderToothBlock(adult, milk))}
         </div>
       </div>
 
       {/* Lower teeth row */}
-      <div className="flex flex-row gap-16 max-w-full justify-center mt-8 mb-4">
+      <div className="flex flex-row gap-6 max-w-full justify-center mt-8 mb-4">
         {/* Lower LEFT quadrant (48-41) */}
-        <div className="flex flex-row gap-8">
+        <div className="flex flex-row gap-4">
           {lowerLeftQuadrant.map(({ adult, milk }) => renderToothBlock(adult, milk))}
         </div>
         {/* Lower RIGHT quadrant (31-38) */}
-        <div className="flex flex-row gap-8">
+        <div className="flex flex-row gap-4">
           {lowerRightQuadrant.map(({ adult, milk }) => renderToothBlock(adult, milk))}
         </div>
       </div>

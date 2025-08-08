@@ -25,7 +25,7 @@ export default function ProcedureHistoryTable() {
   if (!patientId) return null;
   const patient = patients.find((p) => p._id === patientId);
 
-  // ✅ Convert primary tooth number to letter
+  // Convert primary tooth number to letter
   const convertPrimaryNumberToLetter = (num: number | string): string => {
     const map: Record<number, string> = {
       51: "A", 52: "B", 53: "C", 54: "D", 55: "E",
