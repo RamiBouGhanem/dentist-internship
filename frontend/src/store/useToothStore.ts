@@ -6,7 +6,7 @@ import {
   getPatientById,
   updatePatientProcedures,
 } from '../api/patientApi';
-import { validateProcedure } from '../utils/procedureRules';
+// import { validateProcedure } from '../utils/procedureRules';
 
 export interface Procedure {
   type: string;

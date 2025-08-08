@@ -1,7 +1,7 @@
 // src/App.tsx
 import React, { useState } from "react";
 
-import Header from "./components/layout/Header";
+import Header from "./components/Header";
 import ProcedureHistoryDrawer from "./components/ProcedureHistoryTable";
 import NoteInputModal from "./components/NoteInputModal";
 import PatientModal from "./components/PatientModal";

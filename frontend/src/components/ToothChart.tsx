@@ -101,7 +101,7 @@ export default function ToothChart() {
 
   return (
     <div
-      className={`flex flex-col gap-12 items-center justify-center px-2 sm:px-6 py-4 transition mt-12${
+      className={`flex flex-col gap-12 items-center justify-center px-2 sm:px-6 py-4 transition mt-8 pb-12${
         hasModalOpen ? " pointer-events-none blur-[1px]" : ""
       }`}
     >

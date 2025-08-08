@@ -1,6 +1,6 @@
 // components/layout/Header.tsx
 import React from "react";
-import LogoutButton from "../LogoutButton";
+import LogoutButton from "./LogoutButton";
 
 export default function Header() {
   return (
