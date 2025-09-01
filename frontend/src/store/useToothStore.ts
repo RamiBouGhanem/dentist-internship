@@ -16,9 +16,10 @@ export interface Procedure {
   dentistName?: string;
   x?: number;
   y?: number;
-  // NOTE: We intentionally don't type `color` here to avoid breaking places where it's omitted,
-  // but you can still pass a `color` property at runtime for overlays like Bridge.
-  // color?: string;
+  // optional runtime color for overlays (e.g., Bridge)
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  color?: string;
 }
 
 export interface Patient {
@@ -26,30 +27,70 @@ export interface Patient {
   name: string;
   age: number;
   gender: string;
+  dentitionType?: 'adult' | 'child' | 'mixed';
   teethData?: Record<string, Procedure[]>;
 }
 
 type ToothType = 'adult' | 'milk';
-
-// ✅ Bridge 2-step draft state
 type BridgeDraft = { startTooth: number; color: string } | null;
 
+// Adult positions that can have pedo counterparts (FDI)
+const PEDO_CAPABLE_ADULTS = [
+  15, 14, 13, 12, 11, 21, 22, 23, 24, 25,
+  35, 34, 33, 32, 31, 41, 42, 43, 44, 45,
+];
+
+const ADULT_TO_PEDO_MAP: Record<number, number> = {
+  15: 55, 14: 54, 13: 53, 12: 52, 11: 51,
+  21: 61, 22: 62, 23: 63, 24: 64, 25: 65,
+  31: 71, 32: 72, 33: 73, 34: 74, 35: 75,
+  41: 81, 42: 82, 43: 83, 44: 84, 45: 85,
+};
+
+function buildDefaultToothTypes(dentitionType?: Patient['dentitionType']): Record<string, ToothType> {
+  if (dentitionType === 'child') {
+    const map: Record<string, ToothType> = {};
+    PEDO_CAPABLE_ADULTS.forEach((adult) => {
+      map[adult.toString()] = 'milk';
+    });
+    return map;
+  }
+  return {};
+}
+
 interface ToothStore {
+  // data
   teethData: Record<string, Procedure[]>;
   patientId: string | null;
   patients: Patient[];
 
+  // ui state for patient loading
+  isLoadingPatient: boolean;
+  patientError: string | null;
+
+  // tooth type toggles
   toothTypes: Record<string, ToothType>;
   toggleToothType: (number: number) => void;
   getActiveToothNumber: (tooth: number) => number;
 
+  // selection (click-to-apply)
+  selectedProcedureForAdd: (Procedure & { color?: string }) | null;
+  selectProcedureForAdd: (proc: Procedure & { color?: string }) => void;
+  clearSelectedForAdd: () => void;
+
+  // overlay selection (existing)
   selectedProcedure: {
     proc: Procedure;
     toothNumber: string;
     displayTooth: string;
   } | null;
+  setSelectedProcedure: (proc: Procedure, toothNumber: string) => void;
+  clearSelectedProcedure: () => void;
+
+  // draft + modal
   draftProcedure: { proc: Procedure; toothNumber: string } | null;
   noteModalVisible: boolean;
+  hasModalOpen: boolean;
 
   showTable: boolean;
   toggleTable: () => void;
@@ -61,29 +102,25 @@ interface ToothStore {
 
   saveNoteAndAddProcedure: (note: string) => Promise<{ allowed: boolean; reason?: string }>;
 
-  setSelectedProcedure: (proc: Procedure, toothNumber: string) => void;
-  clearSelectedProcedure: () => void;
-
+  // persistence helpers
   addProcedureToTooth: (number: string, item: Procedure) => Promise<void>;
   removeProcedureFromTooth: (number: string, index: number) => Promise<void>;
-  updateProcedureNote: (
-    toothNumber: string,
-    index: number,
-    note: string
-  ) => Promise<void>;
+  updateProcedureNote: (toothNumber: string, index: number, note: string) => Promise<void>;
 
+  // patient
   setPatientId: (id: string) => void;
-
   loadPatientData: () => Promise<void>;
   fetchPatients: () => Promise<void>;
-
   addPatient: (patient: Patient) => void;
 
-  // ✅ Bridge draft actions
+  // bridge 2-step
   bridgeDraft: BridgeDraft;
   startBridgeDraft: (startTooth: number, color: string) => void;
   cancelBridgeDraft: () => void;
   finalizeBridge: (endTooth: number) => { ok: true } | { ok: false; reason: string };
+
+  // main click handler
+  applySelectedToTooth: (toothNumber: string) => { ok: boolean; reason?: string };
 }
 
 export const useToothStore = create<ToothStore>()(
@@ -92,6 +129,9 @@ export const useToothStore = create<ToothStore>()(
       teethData: {},
       patientId: null,
       patients: [],
+
+      isLoadingPatient: false,
+      patientError: null,
 
       toothTypes: {},
       toggleToothType: (number) => {
@@ -109,20 +149,29 @@ export const useToothStore = create<ToothStore>()(
       getActiveToothNumber: (tooth) => {
         const { toothTypes } = get();
         if (toothTypes[tooth.toString()] === 'milk') {
-          const map: Record<number, number> = {
-            15: 51, 14: 52, 13: 53, 12: 54, 11: 55,
-            21: 61, 22: 62, 23: 63, 24: 64, 25: 65,
-            35: 71, 34: 72, 33: 73, 32: 74, 31: 75,
-            41: 81, 42: 82, 43: 83, 44: 84, 45: 85,
-          };
-          return map[tooth] || tooth;
+          return ADULT_TO_PEDO_MAP[tooth] ?? tooth;
         }
         return tooth;
       },
 
+      // === Selection (click-to-apply) ===
+      selectedProcedureForAdd: null,
+      selectProcedureForAdd: (proc) => set({ selectedProcedureForAdd: proc }),
+      clearSelectedForAdd: () => set({ selectedProcedureForAdd: null }),
+
+      // === Overlay selection (existing ones) ===
       selectedProcedure: null,
+      setSelectedProcedure: (proc, toothNumber) => {
+        const state = get();
+        const active = state.getActiveToothNumber(Number(toothNumber));
+        set({ selectedProcedure: { proc, toothNumber: active.toString(), displayTooth: active.toString() } });
+      },
+      clearSelectedProcedure: () => set({ selectedProcedure: null }),
+
+      // === Draft + modal ===
       draftProcedure: null,
       noteModalVisible: false,
+      hasModalOpen: false,
 
       showTable: true,
       toggleTable: () => set((state) => ({ showTable: !state.showTable })),
@@ -138,8 +187,9 @@ export const useToothStore = create<ToothStore>()(
       },
 
       clearDraftProcedure: () => set({ draftProcedure: null }),
-      showNoteModal: () => set({ noteModalVisible: true }),
-      hideNoteModal: () => set({ noteModalVisible: false }),
+
+      showNoteModal: () => set({ noteModalVisible: true, hasModalOpen: true }),
+      hideNoteModal: () => set({ noteModalVisible: false, hasModalOpen: false }),
 
       saveNoteAndAddProcedure: async (note) => {
         const state = get();
@@ -171,6 +221,7 @@ export const useToothStore = create<ToothStore>()(
           teethData: updatedTeethData,
           draftProcedure: null,
           noteModalVisible: false,
+          hasModalOpen: false,
         });
 
         if (state.patientId) {
@@ -184,24 +235,6 @@ export const useToothStore = create<ToothStore>()(
         return { allowed: true };
       },
 
-      setSelectedProcedure: (proc, toothNumber) => {
-        const state = get();
-        const active = state.getActiveToothNumber(Number(toothNumber));
-        const isMilk = active >= 51 && active <= 85;
-        const map: Record<number, string> = {
-          55: 'A', 54: 'B', 53: 'C', 52: 'D', 51: 'E',
-          61: 'F', 62: 'G', 63: 'H', 64: 'I', 65: 'J',
-          75: 'K', 74: 'L', 73: 'M', 72: 'N', 71: 'O',
-          81: 'P', 82: 'Q', 83: 'R', 84: 'S', 85: 'T',
-        };
-
-        const displayTooth = isMilk ? map[active] || toothNumber : toothNumber;
-        set({ selectedProcedure: { proc, toothNumber: active.toString(), displayTooth } });
-      },
-
-      clearSelectedProcedure: () => set({ selectedProcedure: null }),
-
-      // ✅ Keep existing helper but preserve provided notes if present
       addProcedureToTooth: async (tooth, item) => {
         const state = get();
         const activeTooth = state.getActiveToothNumber(Number(tooth)).toString();
@@ -213,7 +246,7 @@ export const useToothStore = create<ToothStore>()(
         const newProcedure: Procedure = {
           ...item,
           createdAt: now,
-          notes: item.notes ?? '', // keep provided notes (e.g., "Bridge 14–16")
+          notes: item.notes ?? '',
           dentistId,
           dentistName,
         };
@@ -280,18 +313,45 @@ export const useToothStore = create<ToothStore>()(
         }
       },
 
-      setPatientId: (id) => set({ patientId: id }),
+      // --- Patient switching: initialize toothTypes for child and reset ephemeral UI ---
+      setPatientId: (id) => {
+        const { patients } = get();
+        const patient = patients.find((p) => p._id === id);
+        const defaults = buildDefaultToothTypes(patient?.dentitionType);
+        set({
+          patientId: id,
+          toothTypes: defaults,
+          selectedProcedureForAdd: null,
+          selectedProcedure: null,
+          draftProcedure: null,
+          bridgeDraft: null,
+          // don't clear teethData here; loadPatientData will replace it
+        });
+      },
 
+      // Load teeth for the selected patient, with loading & error signals
       loadPatientData: async () => {
         const { patientId } = get();
         if (!patientId) return;
 
+        set({ isLoadingPatient: true, patientError: null });
         try {
           const res = await getPatientById(patientId);
-          const patient = res.data;
-          set({ teethData: patient.teethData || {} });
-        } catch (err) {
+          const patient = res.data as Patient;
+
+          const defaults = buildDefaultToothTypes(patient?.dentitionType);
+          set({
+            teethData: patient.teethData || {},
+            toothTypes: defaults,
+            isLoadingPatient: false,
+            patientError: null,
+          });
+        } catch (err: any) {
           console.error('Failed to load patient data:', err);
+          set({
+            isLoadingPatient: false,
+            patientError: 'Unable to reach the server. Please ensure the backend is running.',
+          });
         }
       },
 
@@ -305,19 +365,24 @@ export const useToothStore = create<ToothStore>()(
       },
 
       addPatient: (patient) =>
-        set((state) => ({
-          patients: [...state.patients, patient],
-        })),
+        set((state) => {
+          const nextPatients = [...state.patients, patient];
+          const defaults =
+            patient._id === state.patientId
+              ? buildDefaultToothTypes(patient.dentitionType)
+              : state.toothTypes;
 
-      // ============================
-      // ✅ Bridge 2-step interaction
-      // ============================
+          return {
+            patients: nextPatients,
+            toothTypes: defaults,
+          };
+        }),
+
+      // ===== Bridge 2-step =====
       bridgeDraft: null,
-
       startBridgeDraft: (startTooth, color) => {
         set(() => ({ bridgeDraft: { startTooth, color } }));
       },
-
       cancelBridgeDraft: () => set(() => ({ bridgeDraft: null })),
 
       finalizeBridge: (endTooth) => {
@@ -326,7 +391,6 @@ export const useToothStore = create<ToothStore>()(
 
         const { startTooth, color } = bridgeDraft;
 
-        // Arch rows in UI order so lines form a continuous bar across teeth
         const upperRow = [18,17,16,15,14,13,12,11,21,22,23,24,25,26,27,28];
         const lowerRow = [48,47,46,45,44,43,42,41,31,32,33,34,35,36,37,38];
 
@@ -347,22 +411,42 @@ export const useToothStore = create<ToothStore>()(
         const [from, to] = i1 <= i2 ? [i1, i2] : [i2, i1];
         const span = row.slice(from, to + 1);
 
-        // Apply Bridge segment to every tooth in the span.
-        // We keep a note like "Bridge 14–16" for clarity/history.
         const noteLabel = `Bridge ${row[from]}–${row[to]}`;
-
-        // Add synchronously in sequence; persistence happens inside addProcedureToTooth.
         span.forEach((tooth) => {
-          // @ts-ignore - allow color passthrough even if not in interface
           addProcedureToTooth(tooth.toString(), { type: 'Bridge', notes: noteLabel, color });
         });
 
         set(() => ({ bridgeDraft: null }));
         return { ok: true };
       },
+
+      // === Main click apply ===
+      applySelectedToTooth: (toothNumber) => {
+        const state = get();
+        const sel = state.selectedProcedureForAdd;
+        if (!sel) return { ok: false, reason: 'No procedure selected.' };
+
+        if (sel.type === 'Bridge') {
+          if (!state.bridgeDraft) {
+            const color = sel.color || '#A0522D';
+            state.startBridgeDraft(Number(toothNumber), color);
+            return { ok: true };
+          }
+          if (state.bridgeDraft.startTooth === Number(toothNumber)) {
+            return { ok: false, reason: 'Choose a different tooth to finish the bridge.' };
+          }
+          const res = state.finalizeBridge(Number(toothNumber));
+          if (res.ok) state.clearSelectedForAdd();
+          return res.ok ? { ok: true } : { ok: false, reason: res.reason };
+        }
+
+        const result = state.setDraftProcedure(sel, toothNumber);
+        if (!result.allowed) return { ok: false, reason: result.reason };
+        state.showNoteModal();
+        state.clearSelectedForAdd();
+        return { ok: true };
+      },
     }),
-    {
-      name: 'teeth-storage',
-    }
+    { name: 'teeth-storage' }
   )
 );
