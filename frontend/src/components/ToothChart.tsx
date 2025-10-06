@@ -9,8 +9,8 @@ import { Dialog } from "@headlessui/react";
 const pairedTeeth = [
   // Upper LEFT (1st quadrant)
   { adult: 18, milk: null }, { adult: 17, milk: null }, { adult: 16, milk: null },
-  { adult: 15, milk: 51 }, { adult: 14, milk: 52 }, { adult: 13, milk: 53 },
-  { adult: 12, milk: 54 }, { adult: 11, milk: 55 },
+  { adult: 15, milk: 55 }, { adult: 14, milk: 54 }, { adult: 13, milk: 53 },
+  { adult: 12, milk: 52 }, { adult: 11, milk: 51 },
 
   // Upper RIGHT (2nd quadrant)
   { adult: 21, milk: 61 }, { adult: 22, milk: 62 }, { adult: 23, milk: 63 },
@@ -18,8 +18,8 @@ const pairedTeeth = [
   { adult: 27, milk: null }, { adult: 28, milk: null },
 
   // Lower RIGHT (3rd quadrant)
-  { adult: 31, milk: 75 }, { adult: 32, milk: 74 }, { adult: 33, milk: 73 },
-  { adult: 34, milk: 72 }, { adult: 35, milk: 71 }, { adult: 36, milk: null },
+  { adult: 31, milk: 71 }, { adult: 32, milk: 72 }, { adult: 33, milk: 73 },
+  { adult: 34, milk: 74 }, { adult: 35, milk: 75}, { adult: 36, milk: null },
   { adult: 37, milk: null }, { adult: 38, milk: null },
 
   // Lower LEFT (4th quadrant)

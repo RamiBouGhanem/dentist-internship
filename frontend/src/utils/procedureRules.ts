@@ -1,14 +1,21 @@
 export interface Procedure {
   type: string;
   color?: string;
-  createdAt?: string;
+  createdAt?: string;           // present when COMPLETED (added on chart)
   notes?: string;
+
+  // The following fields may exist on your objects even if not typed elsewhere:
+  status?: "planned" | "completed"; // planned when added from table
+  plannedAt?: string;               // present when PLANNED (from table)
 }
 
 export interface ValidationResult {
   allowed: boolean;
   reason?: string;
 }
+
+/** Treat both extraction labels uniformly in the rules */
+const EXTRACTION_SET = new Set(["Extraction", "Simple Extraction", "Surgical Extraction"]);
 
 const SINGLE_INSTANCE = [
   "Endo",
@@ -55,17 +62,47 @@ const NOT_ALLOWED_ON_CHILD = [
   "Onlay",
 ];
 
+/* --------------------------- helpers -------------------------------- */
+
+/** Only treat items with createdAt or explicit completed status as completed. */
+function isCompleted(p: Procedure): boolean {
+  return !!p.createdAt || p.status === "completed";
+}
+
+/** Ignore planned procedures entirely in rule checks. */
+function completedOnly(existing: Procedure[]): Procedure[] {
+  return existing.filter(isCompleted);
+}
+
+/** True if any extraction variant exists in completed set */
+function hasExtraction(existingCompleted: Procedure[]): boolean {
+  return existingCompleted.some((p) => EXTRACTION_SET.has(p.type));
+}
+
+/** Normalize type for set lookups where needed */
+function includesType(arr: Procedure[], type: string): boolean {
+  if (EXTRACTION_SET.has(type)) {
+    return arr.some((p) => EXTRACTION_SET.has(p.type));
+  }
+  return arr.some((p) => p.type === type);
+}
+
+/* ----------------------------- validator ----------------------------- */
+
 export const validateProcedure = (
   existing: Procedure[],
   incoming: Procedure,
   dentitionType?: "child" | "mixed" | "adult",
   toothNumber?: number
 ): ValidationResult => {
-  const existingTypes = existing.map((p) => p.type);
-  const isMilkTooth = toothNumber && toothNumber >= 51 && toothNumber <= 85;
+  // ✅ Only consider COMPLETED procedures for rule logic.
+  const existingCompleted = completedOnly(existing);
+  const existingTypes = existingCompleted.map((p) => p.type);
+
+  const isMilkTooth = typeof toothNumber === "number" && toothNumber >= 51 && toothNumber <= 85;
 
   /**
-   * RULE: Milk teeth restrictions (for child & mixed)
+   * RULE: Milk teeth restrictions (for child & mixed) — still applies regardless of planned/completed.
    */
   if ((dentitionType === "child" || dentitionType === "mixed") && isMilkTooth) {
     if (NOT_ALLOWED_ON_CHILD.includes(incoming.type)) {
@@ -76,12 +113,12 @@ export const validateProcedure = (
     }
   }
 
-  if (existing.length === 0) return { allowed: true };
+  if (existingCompleted.length === 0) return { allowed: true };
 
   /**
    * RULE: After Missing
    */
-  if (existingTypes.includes("Missing") && !existingTypes.includes("Implant")) {
+  if (includesType(existingCompleted, "Missing") && !includesType(existingCompleted, "Implant")) {
     if (incoming.type === "Implant") {
       return { allowed: true };
     }
@@ -95,7 +132,7 @@ export const validateProcedure = (
    * RULE: Implant
    */
   if (incoming.type === "Implant") {
-    if (existingTypes.includes("Missing") || existingTypes.includes("Extraction")) {
+    if (includesType(existingCompleted, "Missing") || hasExtraction(existingCompleted)) {
       return { allowed: true };
     }
     return {
@@ -108,11 +145,11 @@ export const validateProcedure = (
   /**
    * RULE: After Implant
    */
-  if (existingTypes.includes("Implant")) {
+  if (includesType(existingCompleted, "Implant")) {
     if (ALLOWED_AFTER_IMPLANT.includes(incoming.type)) {
       return { allowed: true };
     }
-    if (incoming.type === "Extraction") {
+    if (EXTRACTION_SET.has(incoming.type)) {
       return {
         allowed: false,
         reason: "You cannot extract an implant. If it fails, mark it as Missing.",
@@ -125,16 +162,16 @@ export const validateProcedure = (
   }
 
   /**
-   * RULE: Extraction
+   * RULE: Extraction (both simple/surgical)
    */
-  if (incoming.type === "Extraction") {
+  if (EXTRACTION_SET.has(incoming.type)) {
     return { allowed: true };
   }
 
   /**
    * RULE: After Extraction
    */
-  if (existingTypes.includes("Extraction")) {
+  if (hasExtraction(existingCompleted)) {
     return {
       allowed: false,
       reason:
@@ -143,9 +180,9 @@ export const validateProcedure = (
   }
 
   /**
-   * Single-instance procedures cannot be repeated
+   * Single-instance procedures cannot be repeated (only counts completed ones)
    */
-  if (SINGLE_INSTANCE.includes(incoming.type) && existingTypes.includes(incoming.type)) {
+  if (SINGLE_INSTANCE.includes(incoming.type) && includesType(existingCompleted, incoming.type)) {
     return {
       allowed: false,
       reason: `${incoming.type} can only be performed once on a tooth.`,
@@ -153,10 +190,10 @@ export const validateProcedure = (
   }
 
   /**
-   * Major restorations cannot overlap (except Temporary → Final)
+   * Major restorations cannot overlap (except Temporary → Final), only among completed ones
    */
   if (MAJOR_RESTORATIONS.includes(incoming.type)) {
-    const existingMajor = existing.find((p) => MAJOR_RESTORATIONS.includes(p.type));
+    const existingMajor = existingCompleted.find((p) => MAJOR_RESTORATIONS.includes(p.type));
     if (existingMajor) {
       if (existingMajor.type === "Temporary" && incoming.type !== "Temporary") {
         return { allowed: true };
@@ -169,9 +206,9 @@ export const validateProcedure = (
   }
 
   /**
-   * Invalid combinations
+   * Invalid combinations — evaluate against completed items only
    */
-  for (const proc of existing) {
+  for (const proc of existingCompleted) {
     if (
       (proc.type === "Endo" && incoming.type === "Pulpotomy") ||
       (proc.type === "Pulpotomy" && incoming.type === "Endo")
