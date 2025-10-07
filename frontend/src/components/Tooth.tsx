@@ -3,6 +3,7 @@ import { useToothStore } from "../store/useToothStore";
 import type { Procedure } from "../store/useToothStore";
 import { AlertTriangle } from "lucide-react";
 import { createPortal } from "react-dom";
+import { useToothComponent } from "./ToothShapes";
 
 interface ToothProps {
   number: number;
@@ -28,6 +29,7 @@ export default function Tooth({ number }: ToothProps) {
   const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const ToothShapeComponent = useToothComponent(number);
 
   const procedures: Procedure[] = (teethData[number.toString()] || []).filter(
     (p: any) => (p.status ?? "completed") !== "planned"
@@ -651,45 +653,15 @@ export default function Tooth({ number }: ToothProps) {
           {number}
         </div>
 
-        <svg viewBox="0 0 100 140" className="w-14 h-20 overflow-visible">
-          <defs>
-            <linearGradient
-              id="toothCrownGradient"
-              x1="0%"
-              y1="0%"
-              x2="0%"
-              y2="100%"
-            >
-              <stop offset="0%" stopColor="hsl(0, 0%, 100%)" />
-              <stop offset="100%" stopColor="hsl(0, 0%, 90%)" />
-            </linearGradient>
-            <linearGradient
-              id="toothRootGradient"
-              x1="0%"
-              y1="0%"
-              x2="0%"
-              y2="100%"
-            >
-              <stop offset="0%" stopColor="hsl(40, 60%, 90%)" />
-              <stop offset="100%" stopColor="hsl(40, 40%, 70%)" />
-            </linearGradient>
-          </defs>
-          <g transform="translate(100 140) scale(-1 -1) translate(0 10)">
-            <path
-              d="M50 0 C25 5, 15 25, 20 45 C25 60, 35 70, 50 70 C65 70, 75 60, 80 45 C85 25, 75 5, 50 0 Z"
-              fill="url(#toothCrownGradient)"
-            />
-            <path
-              d="M45 70 C35 75, 25 85, 28 100 C30 115, 38 128, 45 130 L45 70 Z"
-              fill="url(#toothRootGradient)"
-            />
-            <path
-              d="M55 70 C65 75, 75 85, 72 100 C70 115, 62 128, 55 130 L55 70 Z"
-              fill="url(#toothRootGradient)"
-            />
-            {procedures.map((p, i) => renderOverlay(p, i))}
-          </g>
-        </svg>
+        <div className="w-14 h-20 overflow-visible relative">
+          <ToothShapeComponent
+            procedures={procedures}
+            onRemove={(index: number) =>
+              removeProcedureFromTooth(number.toString(), index)
+            }
+            isSelected={isBridgeStart}
+          />
+        </div>
 
         {info && (
           <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] text-amber-700 bg-amber-100 px-2 py-0.5 rounded shadow">
