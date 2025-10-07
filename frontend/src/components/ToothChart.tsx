@@ -352,7 +352,7 @@ export default function ToothChart() {
       }`}
     >
       {/* UPPER teeth row */}
-      <div className="flex flex-row gap-20 max-w-full justify-center mt-2">
+      <div className="flex flex-row gap-20 max-w-full justify-center mt-20">
         {/* Upper Left (18-11) */}
         <div className="flex flex-row gap-5">
           {upperLeftQuadrant.map(({ adult, milk }) => (
