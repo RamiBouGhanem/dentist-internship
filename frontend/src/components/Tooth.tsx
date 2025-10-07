@@ -9,6 +9,8 @@ interface ToothProps {
   number: number;
   allowToggle?: boolean; // unused here but kept for compatibility
   dimmed?: boolean; // parent may control opacity
+  displayNumber?: number;
+  isVisible?: boolean;
 }
 
 export default function Tooth({ number }: ToothProps) {

@@ -8,6 +8,7 @@ import {
 } from '../api/patientApi';
 import { validateProcedure } from '../utils/procedureRules';
 
+// Update the Procedure interface to make color required
 export interface Procedure {
   type: string;
   createdAt?: string;
@@ -16,10 +17,7 @@ export interface Procedure {
   dentistName?: string;
   x?: number;
   y?: number;
-  // optional runtime color for overlays (e.g., Bridge)
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
-  color?: string;
+  color: string; // Change from optional to required
 }
 
 export interface Patient {
@@ -72,6 +70,12 @@ interface ToothStore {
   toothTypes: Record<string, ToothType>;
   toggleToothType: (number: number) => void;
   getActiveToothNumber: (tooth: number) => number;
+
+  // Child mode functionality - ADD THESE
+  isChildMode: boolean;
+  toggleChildMode: () => void;
+  getToothVisibility: (toothNumber: number) => boolean;
+  getToothDisplayNumber: (toothNumber: number) => number;
 
   // selection (click-to-apply)
   selectedProcedureForAdd: (Procedure & { color?: string }) | null;
@@ -134,6 +138,50 @@ export const useToothStore = create<ToothStore>()(
       patientError: null,
 
       toothTypes: {},
+      
+      // Child mode functionality - ADD THESE
+      isChildMode: false,
+      
+      toggleChildMode: () => set((state) => ({ 
+        isChildMode: !state.isChildMode 
+      })),
+
+      getToothVisibility: (toothNumber: number) => {
+        const { isChildMode, patients, patientId } = get();
+        const currentPatient = patients.find((p) => p._id === patientId);
+        const dentitionType = currentPatient?.dentitionType || "adult";
+        
+        if (!isChildMode || dentitionType === "adult") return true;
+        
+        // In child mode, only show specific teeth (51-55, 61-65, 71-75, 81-85)
+        const childTeeth = [
+          51, 52, 53, 54, 55,
+          61, 62, 63, 64, 65,
+          71, 72, 73, 74, 75,
+          81, 82, 83, 84, 85
+        ];
+        
+        return childTeeth.includes(toothNumber);
+      },
+
+      getToothDisplayNumber: (toothNumber: number) => {
+        const { isChildMode, patients, patientId } = get();
+        const currentPatient = patients.find((p) => p._id === patientId);
+        const dentitionType = currentPatient?.dentitionType || "adult";
+        
+        if (!isChildMode || dentitionType === "adult") return toothNumber;
+        
+        // Convert adult tooth numbers to child numbers
+        const adultToChildMap: { [key: number]: number } = {
+          11: 51, 12: 52, 13: 53, 14: 54, 15: 55,
+          21: 61, 22: 62, 23: 63, 24: 64, 25: 65,
+          31: 71, 32: 72, 33: 73, 34: 74, 35: 75,
+          41: 81, 42: 82, 43: 83, 44: 84, 45: 85
+        };
+        
+        return adultToChildMap[toothNumber] || toothNumber;
+      },
+
       toggleToothType: (number) => {
         set((state) => {
           const current = state.toothTypes[number.toString()] || 'adult';

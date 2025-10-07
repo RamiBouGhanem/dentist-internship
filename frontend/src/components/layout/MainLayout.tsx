@@ -1,45 +1,45 @@
 // components/layout/MainLayout.tsx
 import React from "react";
-import Toolbar from "../Toolbar";
+import Header from "./Header";
+import ProcedureSidebar from "../ProcedureSidebas";
 import ToothChart from "../ToothChart";
 import ProcedureHistoryTable from "../ProcedureHistoryTable";
 
 export default function MainLayout() {
   return (
-    <main className="min-h-screen bg-gray-50">
-      {/* content container */}
-      <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8 py-6">
-        {/* responsive 2-col: stack on <xl, side-by-side on xl+ */}
-        <div className="flex flex-col xl:flex-row gap-6 lg:gap-8">
-          {/* LEFT: Tooth chart + history (flexible) */}
-          <section className="flex-1 min-w-0">
-            <div className="bg-white rounded-xl shadow p-4 sm:p-6">
-              <ToothChart />
-              <div className="mt-6">
+    <div className="flex min-h-screen bg-gray-50">
+      {/* Main Content Area - Takes full width */}
+      <div className="flex-1 flex flex-col min-h-0">
+        {/* Header with Dental Chart title and patient search */}
+        <div className="bg-white shadow-sm border-b border-gray-200 flex-shrink-0">
+          <div className="max-w-7xl mx-auto px-6 py-4">
+            <Header />
+          </div>
+        </div>
+
+        {/* Content Area with Sidebar and Main Content */}
+        <div className="flex-1 flex min-h-0">
+          {/* Sidebar - Scrollable and fixed height */}
+          <div className="w-64 bg-white border-r border-gray-200 flex-shrink-0 overflow-y-auto">
+            <ProcedureSidebar />
+          </div>
+
+          {/* Main Content - Scrollable */}
+          <div className="flex-1 overflow-auto">
+            <div className="max-w-6xl mx-auto p-6">
+              {/* Tooth Chart - Fixed container with proper spacing */}
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+                <ToothChart />
+              </div>
+
+              {/* Procedure History Table */}
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                 <ProcedureHistoryTable />
               </div>
             </div>
-          </section>
-
-          {/* RIGHT: Toolbar (fixed width, sticky, scrollable) */}
-          <aside
-            className="
-              w-full xl:w-[380px] 2xl:w-[420px] shrink-0
-              xl:sticky xl:top-6
-            "
-          >
-            <div
-              className="
-                bg-white rounded-xl shadow p-3 sm:p-4
-                max-h-[calc(100vh-3rem)] xl:max-h-[calc(100vh-4rem)]
-                overflow-y-auto
-              "
-            >
-              <Toolbar />
-            </div>
-          </aside>
+          </div>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

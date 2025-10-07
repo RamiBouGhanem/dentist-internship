@@ -36,3 +36,51 @@
     transform: rotate(360deg);
   }
 }
+
+/* Main Layout */
+.main-layout {
+  display: flex;
+  height: 100vh;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Procedure Sidebar */
+.procedure-sidebar {
+  width: 16rem;
+  background: white;
+  border-right: 1px solid #e5e7eb;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Ensure smooth scrolling */
+.procedure-sidebar > div:last-child {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Tooth fade animation */
+.tooth-fade-enter {
+  opacity: 0;
+}
+
+.tooth-fade-enter-active {
+  opacity: 1;
+  transition: opacity 300ms;
+}
+
+.tooth-fade-exit {
+  opacity: 1;
+}
+
+.tooth-fade-exit-active {
+  opacity: 0.3;
+  transition: opacity 300ms;
+}

@@ -7,15 +7,15 @@ import { Repeat2 } from "lucide-react";
 import { Dialog } from "@headlessui/react";
 
 /** Layout constants tuned to keep previous width (44px) and current taller height */
-const CELL_W_CLASS = "w-[34px]";         // <- previous width
-const TOOTH_NATIVE_W = 64;               // Tooth.tsx (w-16) ~ 64px
-const TOOTH_NATIVE_H = 96;               // Tooth.tsx (h-24) ~ 96px
-const SCALE = 52 / TOOTH_NATIVE_W;       // 0.6875 to fit 44px width
+const CELL_W_CLASS = "w-[34px]"; // <- previous width
+const TOOTH_NATIVE_W = 64; // Tooth.tsx (w-16) ~ 64px
+const TOOTH_NATIVE_H = 96; // Tooth.tsx (h-24) ~ 96px
+const SCALE = 52 / TOOTH_NATIVE_W; // 0.6875 to fit 44px width
 const SCALED_H = TOOTH_NATIVE_H * SCALE; // 96 * .6875 = 66px visual height
 
-const OCCLUSAL_DX = 0;       // px, slight right nudge
-const UPPER_MT = 10;         // px, occlusal margin-top under upper teeth
-const LOWER_MB = 8;          // px, occlusal margin-bottom above lower teeth
+const OCCLUSAL_DX = 0; // px, slight right nudge
+const UPPER_MT = 10; // px, occlusal margin-top under upper teeth
+const LOWER_MB = 8; // px, occlusal margin-bottom above lower teeth
 const VERTICAL_GAP = "gap-20"; // tall chart spacing
 
 /** Paired dentition map */
@@ -82,44 +82,139 @@ const Occlusal = ({
     onPick && toothNumber != null && onPick(toothNumber, r);
 
   return (
-    <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} className="block" aria-label="Tooth top view">
-      <circle cx={CX} cy={CY} r={OUTER_R} fill="white" stroke="#111827" strokeWidth={STROKE} />
-      <circle cx={CX} cy={CY} r={INNER_R} fill="white" stroke="#111827" strokeWidth={STROKE} />
+    <svg
+      width={SIZE}
+      height={SIZE}
+      viewBox={`0 0 ${SIZE} ${SIZE}`}
+      className="block"
+      aria-label="Tooth top view"
+    >
+      <circle
+        cx={CX}
+        cy={CY}
+        r={OUTER_R}
+        fill="white"
+        stroke="#111827"
+        strokeWidth={STROKE}
+      />
+      <circle
+        cx={CX}
+        cy={CY}
+        r={INNER_R}
+        fill="white"
+        stroke="#111827"
+        strokeWidth={STROKE}
+      />
       {/* spokes */}
-      <line x1={CX - OUTER_R} y1={CY} x2={CX - INNER_R} y2={CY} stroke="#111827" strokeWidth={STROKE} strokeLinecap="round" />
-      <line x1={CX + INNER_R} y1={CY} x2={CX + OUTER_R} y2={CY} stroke="#111827" strokeWidth={STROKE} strokeLinecap="round" />
-      <line x1={CX} y1={CY - OUTER_R} x2={CX} y2={CY - INNER_R} stroke="#111827" strokeWidth={STROKE} strokeLinecap="round" />
-      <line x1={CX} y1={CY + INNER_R} x2={CX} y2={CY + OUTER_R} stroke="#111827" strokeWidth={STROKE} strokeLinecap="round" />
+      <line
+        x1={CX - OUTER_R}
+        y1={CY}
+        x2={CX - INNER_R}
+        y2={CY}
+        stroke="#111827"
+        strokeWidth={STROKE}
+        strokeLinecap="round"
+      />
+      <line
+        x1={CX + INNER_R}
+        y1={CY}
+        x2={CX + OUTER_R}
+        y2={CY}
+        stroke="#111827"
+        strokeWidth={STROKE}
+        strokeLinecap="round"
+      />
+      <line
+        x1={CX}
+        y1={CY - OUTER_R}
+        x2={CX}
+        y2={CY - INNER_R}
+        stroke="#111827"
+        strokeWidth={STROKE}
+        strokeLinecap="round"
+      />
+      <line
+        x1={CX}
+        y1={CY + INNER_R}
+        x2={CX}
+        y2={CY + OUTER_R}
+        stroke="#111827"
+        strokeWidth={STROKE}
+        strokeLinecap="round"
+      />
       {/* clickable regions */}
       <path
-        d={`M ${CX} ${CY - INNER_R} A ${INNER_R} ${INNER_R} 0 0 0 ${CX} ${CY + INNER_R}
-            L ${CX - OUTER_R} ${CY} A ${OUTER_R} ${OUTER_R} 0 0 1 ${CX} ${CY - OUTER_R} Z`}
-        fill="transparent" className="cursor-pointer" onClick={() => fire("M")}
+        d={`M ${CX} ${CY - INNER_R} A ${INNER_R} ${INNER_R} 0 0 0 ${CX} ${
+          CY + INNER_R
+        }
+            L ${CX - OUTER_R} ${CY} A ${OUTER_R} ${OUTER_R} 0 0 1 ${CX} ${
+          CY - OUTER_R
+        } Z`}
+        fill="transparent"
+        className="cursor-pointer"
+        onClick={() => fire("M")}
       />
       <path
-        d={`M ${CX} ${CY - INNER_R} A ${INNER_R} ${INNER_R} 0 0 1 ${CX} ${CY + INNER_R}
-            L ${CX + OUTER_R} ${CY} A ${OUTER_R} ${OUTER_R} 0 0 0 ${CX} ${CY - OUTER_R} Z`}
-        fill="transparent" className="cursor-pointer" onClick={() => fire("D")}
+        d={`M ${CX} ${CY - INNER_R} A ${INNER_R} ${INNER_R} 0 0 1 ${CX} ${
+          CY + INNER_R
+        }
+            L ${CX + OUTER_R} ${CY} A ${OUTER_R} ${OUTER_R} 0 0 0 ${CX} ${
+          CY - OUTER_R
+        } Z`}
+        fill="transparent"
+        className="cursor-pointer"
+        onClick={() => fire("D")}
       />
       <path
-        d={`M ${CX - INNER_R} ${CY} A ${INNER_R} ${INNER_R} 0 0 1 ${CX + INNER_R} ${CY}
-            L ${CX} ${CY - OUTER_R} A ${OUTER_R} ${OUTER_R} 0 0 0 ${CX - OUTER_R} ${CY} Z`}
-        fill="transparent" className="cursor-pointer" onClick={() => fire("B")}
+        d={`M ${CX - INNER_R} ${CY} A ${INNER_R} ${INNER_R} 0 0 1 ${
+          CX + INNER_R
+        } ${CY}
+            L ${CX} ${CY - OUTER_R} A ${OUTER_R} ${OUTER_R} 0 0 0 ${
+          CX - OUTER_R
+        } ${CY} Z`}
+        fill="transparent"
+        className="cursor-pointer"
+        onClick={() => fire("B")}
       />
       <path
-        d={`M ${CX - INNER_R} ${CY} A ${INNER_R} ${INNER_R} 0 0 0 ${CX + INNER_R} ${CY}
-            L ${CX} ${CY + OUTER_R} A ${OUTER_R} ${OUTER_R} 0 0 1 ${CX - OUTER_R} ${CY} Z`}
-        fill="transparent" className="cursor-pointer" onClick={() => fire("L")}
+        d={`M ${CX - INNER_R} ${CY} A ${INNER_R} ${INNER_R} 0 0 0 ${
+          CX + INNER_R
+        } ${CY}
+            L ${CX} ${CY + OUTER_R} A ${OUTER_R} ${OUTER_R} 0 0 1 ${
+          CX - OUTER_R
+        } ${CY} Z`}
+        fill="transparent"
+        className="cursor-pointer"
+        onClick={() => fire("L")}
       />
-      <circle cx={CX} cy={CY} r={INNER_R - 1} fill="transparent" className="cursor-pointer" onClick={() => fire("C")} />
+      <circle
+        cx={CX}
+        cy={CY}
+        r={INNER_R - 1}
+        fill="transparent"
+        className="cursor-pointer"
+        onClick={() => fire("C")}
+      />
     </svg>
   );
 };
 
 export default function ToothChart() {
-  const { toothTypes, toggleToothType, hasModalOpen, patientId, patients } = useToothStore();
+  const {
+    toothTypes,
+    toggleToothType,
+    hasModalOpen,
+    patientId,
+    patients,
+    isChildMode,
+    getToothVisibility,
+    getToothDisplayNumber,
+  } = useToothStore();
 
-  const [confirmToggle, setConfirmToggle] = useState<null | { adult: number; isMilk: boolean }>(null);
+  const [confirmToggle, setConfirmToggle] = useState<null | {
+    adult: number;
+    isMilk: boolean;
+  }>(null);
 
   const currentPatient = patients.find((p) => p._id === patientId);
   const isChild = currentPatient?.dentitionType === "child";
@@ -141,25 +236,36 @@ export default function ToothChart() {
     const isMilk = toothTypes[adult.toString()] === "milk";
     const active = isMilk && milk ? milk : adult;
     const passive = isMilk && milk ? adult : milk;
+    const isVisible = getToothVisibility(active);
+    const displayNumber = getToothDisplayNumber(active);
     const isExcluded = isChild && excludedTeeth.includes(adult);
 
     // A 44px-wide column that holds a visually 66px-tall scaled tooth (from 96px).
     return (
       <div
         key={adult}
-        className={`relative ${CELL_W_CLASS} group ${isExcluded ? "opacity-30 pointer-events-none" : ""}`}
+        className={`relative ${CELL_W_CLASS} group ${
+          !isVisible || isExcluded ? "opacity-30 pointer-events-none" : ""
+        }`}
         style={{ height: `${SCALED_H}px` }}
       >
         {/* PASSIVE dimmed tooth behind (scaled) */}
         {passive && (
-          <div className="absolute left-1/2 top-0 -translate-x-1/2 z-0 opacity-0 pointer-events-none"
-               style={{
-                 width: `${TOOTH_NATIVE_W}px`,
-                 height: `${TOOTH_NATIVE_H}px`,
-                 transform: `translateX(-50%) scale(${SCALE})`,
-                 transformOrigin: "top center",
-               }}>
-            <Tooth number={passive} dimmed />
+          <div
+            className="absolute left-1/2 top-0 z-10"
+            style={{
+              width: `${TOOTH_NATIVE_W}px`,
+              height: `${TOOTH_NATIVE_H}px`,
+              transform: `translateX(-50%) scale(${SCALE})`,
+              transformOrigin: "top center",
+            }}
+          >
+            <Tooth
+              number={active}
+              displayNumber={displayNumber} // PASS DISPLAY NUMBER
+              isVisible={isVisible} // PASS VISIBILITY
+              allowToggle={!!milk && isVisible && !isExcluded}
+            />
           </div>
         )}
 
@@ -197,23 +303,41 @@ export default function ToothChart() {
   const lowerLeftQuadrant = pairedTeeth.slice(24, 32);
 
   /** Cell stacks tooth + occlusal centered within the 44px column. */
-  const UpperCell = ({ adult, milk }: { adult: number; milk: number | null }) => (
+  const UpperCell = ({
+    adult,
+    milk,
+  }: {
+    adult: number;
+    milk: number | null;
+  }) => (
     <div className={`${CELL_W_CLASS} flex flex-col items-center`}>
       {renderToothBlock(adult, milk)}
       <div
         className={`${CELL_W_CLASS} flex justify-center`}
-        style={{ marginTop: UPPER_MT, transform: `translateX(${OCCLUSAL_DX}px)` }}
+        style={{
+          marginTop: UPPER_MT,
+          transform: `translateX(${OCCLUSAL_DX}px)`,
+        }}
       >
         <Occlusal />
       </div>
     </div>
   );
 
-  const LowerCell = ({ adult, milk }: { adult: number; milk: number | null }) => (
+  const LowerCell = ({
+    adult,
+    milk,
+  }: {
+    adult: number;
+    milk: number | null;
+  }) => (
     <div className={`${CELL_W_CLASS} flex flex-col items-center`}>
       <div
         className={`${CELL_W_CLASS} flex justify-center`}
-        style={{ marginBottom: LOWER_MB, transform: `translateX(${OCCLUSAL_DX}px)` }}
+        style={{
+          marginBottom: LOWER_MB,
+          transform: `translateX(${OCCLUSAL_DX}px)`,
+        }}
       >
         <Occlusal />
       </div>
@@ -230,13 +354,13 @@ export default function ToothChart() {
       {/* UPPER teeth row */}
       <div className="flex flex-row gap-20 max-w-full justify-center mt-2">
         {/* Upper Left (18-11) */}
-        <div className="flex flex-row gap-10">
+        <div className="flex flex-row gap-5">
           {upperLeftQuadrant.map(({ adult, milk }) => (
             <UpperCell key={adult} adult={adult} milk={milk} />
           ))}
         </div>
         {/* Upper Right (21-28) */}
-        <div className="flex flex-row gap-10">
+        <div className="flex flex-row gap-5">
           {upperRightQuadrant.map(({ adult, milk }) => (
             <UpperCell key={adult} adult={adult} milk={milk} />
           ))}
@@ -246,13 +370,13 @@ export default function ToothChart() {
       {/* LOWER teeth row */}
       <div className="flex flex-row gap-20 max-w-full justify-center mb-2">
         {/* Lower LEFT (48-41) */}
-        <div className="flex flex-row gap-10">
+        <div className="flex flex-row gap-5">
           {lowerLeftQuadrant.map(({ adult, milk }) => (
             <LowerCell key={adult} adult={adult} milk={milk} />
           ))}
         </div>
         {/* Lower RIGHT (31-38) */}
-        <div className="flex flex-row gap-10">
+        <div className="flex flex-row gap-5">
           {lowerRightQuadrant.map(({ adult, milk }) => (
             <LowerCell key={adult} adult={adult} milk={milk} />
           ))}
@@ -266,7 +390,10 @@ export default function ToothChart() {
         onClose={cancelToggleAction}
         className="fixed z-50 inset-0 flex items-center justify-center"
       >
-        <div className="fixed inset-0 bg-black bg-opacity-30" aria-hidden="true" />
+        <div
+          className="fixed inset-0 bg-black bg-opacity-30"
+          aria-hidden="true"
+        />
         <div className="bg-white rounded-xl shadow-xl p-6 z-50 max-w-sm mx-auto">
           <Dialog.Title className="text-lg font-semibold text-gray-800">
             Confirm Tooth Type Switch
