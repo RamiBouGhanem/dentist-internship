@@ -9,7 +9,7 @@ export default function MainLayout() {
       {/* Top row: Toolbar + ToothChart - Constrained to tooth chart height */}
       <div className="flex flex-row items-start w-full">
         {/* Left: Toolbar - matches tooth chart height */}
-        <div className="w-64 flex-shrink-0 border-r border-gray-200">
+        <div className="w-64 mt-14 flex-shrink-0 border-r border-gray-200">
           <Toolbar />
         </div>
 

@@ -1,17 +1,17 @@
 // File: components/ToothChart.tsx
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import Tooth from "./Tooth";
 import { useToothStore } from "../store/useToothStore";
 import ProcedureModal from "./ProcedureModal";
 import { Repeat2 } from "lucide-react";
 import { Dialog } from "@headlessui/react";
 
-/** Layout constants tuned to keep previous width (44px) and current taller height */
-const CELL_W_CLASS = "w-[34px]"; // <- previous width
+/** Layout constants tuned to keep previous width (≈34px) and current taller height */
+const CELL_W_CLASS = "w-[34px]";
 const TOOTH_NATIVE_W = 64; // Tooth.tsx (w-16) ~ 64px
 const TOOTH_NATIVE_H = 96; // Tooth.tsx (h-24) ~ 96px
-const SCALE = 52 / TOOTH_NATIVE_W; // 0.6875 to fit 44px width
-const SCALED_H = TOOTH_NATIVE_H * SCALE; // 96 * .6875 = 66px visual height
+const SCALE = 52 / TOOTH_NATIVE_W; // 0.8125 -> tweak if you want tighter
+const SCALED_H = TOOTH_NATIVE_H * SCALE;
 
 const OCCLUSAL_DX = 0; // px, slight right nudge
 const UPPER_MT = 10; // px, occlusal margin-top under upper teeth
@@ -63,13 +63,38 @@ const pairedTeeth = [
 
 const excludedTeeth = [18, 17, 16, 26, 27, 28, 36, 37, 38, 46, 47, 48];
 
-/** Bigger occlusal top-view (28×28) ready for 5-region fillings */
+/** Parse a "Filling - SURFACES" type into regions for occlusal painting. */
+function parseFillingRegions(type: string): Array<"M" | "D" | "B" | "L" | "C"> {
+  const norm = type?.toUpperCase() ?? "";
+  const match = norm.match(/FILLING\s*-\s*([A-Z]+)/);
+  const code = match ? match[1] : (norm.startsWith("FILLING") ? "O" : "");
+
+  // Map any letter set to regions: O->C, M,D,B,L stay.
+  const regions = new Set<"M" | "D" | "B" | "L" | "C">();
+  for (const ch of code) {
+    if (ch === "O") regions.add("C");
+    if (ch === "M") regions.add("M");
+    if (ch === "D") regions.add("D");
+    if (ch === "B") regions.add("B");
+    if (ch === "L") regions.add("L");
+  }
+  // Common combos without explicit O:
+  if (code === "MOD" || code === "DOM" || code === "DMO") {
+    regions.add("C"); regions.add("M"); regions.add("D");
+  }
+  if (code === "MODBL" || code === "MODLB" || code === "MODBLF") {
+    regions.add("C"); regions.add("M"); regions.add("D"); regions.add("B"); regions.add("L");
+  }
+  // If nothing recognized but it's a Filling, default to center.
+  if (!regions.size && norm.startsWith("FILLING")) regions.add("C");
+  return [...regions];
+}
+
+/** Occlusal top-view (28×28) with 5 paintable regions and overlay for fillings */
 const Occlusal = ({
-  onPick,
-  toothNumber,
+  fillings,
 }: {
-  onPick?: (tooth: number, region: "M" | "D" | "B" | "L" | "C") => void;
-  toothNumber?: number;
+  fillings: { color: string; regions: Array<"M" | "D" | "B" | "L" | "C"> }[];
 }) => {
   const SIZE = 28;
   const OUTER_R = SIZE / 2 - 1.2;
@@ -78,8 +103,18 @@ const Occlusal = ({
   const CY = SIZE / 2;
   const STROKE = 1.6;
 
-  const fire = (r: "M" | "D" | "B" | "L" | "C") =>
-    onPick && toothNumber != null && onPick(toothNumber, r);
+  // Reusable region paths
+  const PATHS = useMemo(() => {
+    const pM = `M ${CX} ${CY - INNER_R} A ${INNER_R} ${INNER_R} 0 0 0 ${CX} ${CY + INNER_R}
+               L ${CX - OUTER_R} ${CY} A ${OUTER_R} ${OUTER_R} 0 0 1 ${CX} ${CY - OUTER_R} Z`;
+    const pD = `M ${CX} ${CY - INNER_R} A ${INNER_R} ${INNER_R} 0 0 1 ${CX} ${CY + INNER_R}
+               L ${CX + OUTER_R} ${CY} A ${OUTER_R} ${OUTER_R} 0 0 0 ${CX} ${CY - OUTER_R} Z`;
+    const pB = `M ${CX - INNER_R} ${CY} A ${INNER_R} ${INNER_R} 0 0 1 ${CX + INNER_R} ${CY}
+               L ${CX} ${CY - OUTER_R} A ${OUTER_R} ${OUTER_R} 0 0 0 ${CX - OUTER_R} ${CY} Z`;
+    const pL = `M ${CX - INNER_R} ${CY} A ${INNER_R} ${INNER_R} 0 0 0 ${CX + INNER_R} ${CY}
+               L ${CX} ${CY + OUTER_R} A ${OUTER_R} ${OUTER_R} 0 0 1 ${CX - OUTER_R} ${CY} Z`;
+    return { M: pM, D: pD, B: pB, L: pL };
+  }, [CX, CY, OUTER_R, INNER_R]);
 
   return (
     <svg
@@ -89,112 +124,26 @@ const Occlusal = ({
       className="block"
       aria-label="Tooth top view"
     >
-      <circle
-        cx={CX}
-        cy={CY}
-        r={OUTER_R}
-        fill="white"
-        stroke="#111827"
-        strokeWidth={STROKE}
-      />
-      <circle
-        cx={CX}
-        cy={CY}
-        r={INNER_R}
-        fill="white"
-        stroke="#111827"
-        strokeWidth={STROKE}
-      />
+      <circle cx={CX} cy={CY} r={OUTER_R} fill="white" stroke="#111827" strokeWidth={STROKE} />
+      <circle cx={CX} cy={CY} r={INNER_R} fill="white" stroke="#111827" strokeWidth={STROKE} />
       {/* spokes */}
-      <line
-        x1={CX - OUTER_R}
-        y1={CY}
-        x2={CX - INNER_R}
-        y2={CY}
-        stroke="#111827"
-        strokeWidth={STROKE}
-        strokeLinecap="round"
-      />
-      <line
-        x1={CX + INNER_R}
-        y1={CY}
-        x2={CX + OUTER_R}
-        y2={CY}
-        stroke="#111827"
-        strokeWidth={STROKE}
-        strokeLinecap="round"
-      />
-      <line
-        x1={CX}
-        y1={CY - OUTER_R}
-        x2={CX}
-        y2={CY - INNER_R}
-        stroke="#111827"
-        strokeWidth={STROKE}
-        strokeLinecap="round"
-      />
-      <line
-        x1={CX}
-        y1={CY + INNER_R}
-        x2={CX}
-        y2={CY + OUTER_R}
-        stroke="#111827"
-        strokeWidth={STROKE}
-        strokeLinecap="round"
-      />
-      {/* clickable regions */}
-      <path
-        d={`M ${CX} ${CY - INNER_R} A ${INNER_R} ${INNER_R} 0 0 0 ${CX} ${
-          CY + INNER_R
-        }
-            L ${CX - OUTER_R} ${CY} A ${OUTER_R} ${OUTER_R} 0 0 1 ${CX} ${
-          CY - OUTER_R
-        } Z`}
-        fill="transparent"
-        className="cursor-pointer"
-        onClick={() => fire("M")}
-      />
-      <path
-        d={`M ${CX} ${CY - INNER_R} A ${INNER_R} ${INNER_R} 0 0 1 ${CX} ${
-          CY + INNER_R
-        }
-            L ${CX + OUTER_R} ${CY} A ${OUTER_R} ${OUTER_R} 0 0 0 ${CX} ${
-          CY - OUTER_R
-        } Z`}
-        fill="transparent"
-        className="cursor-pointer"
-        onClick={() => fire("D")}
-      />
-      <path
-        d={`M ${CX - INNER_R} ${CY} A ${INNER_R} ${INNER_R} 0 0 1 ${
-          CX + INNER_R
-        } ${CY}
-            L ${CX} ${CY - OUTER_R} A ${OUTER_R} ${OUTER_R} 0 0 0 ${
-          CX - OUTER_R
-        } ${CY} Z`}
-        fill="transparent"
-        className="cursor-pointer"
-        onClick={() => fire("B")}
-      />
-      <path
-        d={`M ${CX - INNER_R} ${CY} A ${INNER_R} ${INNER_R} 0 0 0 ${
-          CX + INNER_R
-        } ${CY}
-            L ${CX} ${CY + OUTER_R} A ${OUTER_R} ${OUTER_R} 0 0 1 ${
-          CX - OUTER_R
-        } ${CY} Z`}
-        fill="transparent"
-        className="cursor-pointer"
-        onClick={() => fire("L")}
-      />
-      <circle
-        cx={CX}
-        cy={CY}
-        r={INNER_R - 1}
-        fill="transparent"
-        className="cursor-pointer"
-        onClick={() => fire("C")}
-      />
+      <line x1={CX - OUTER_R} y1={CY} x2={CX - INNER_R} y2={CY} stroke="#111827" strokeWidth={STROKE} strokeLinecap="round" />
+      <line x1={CX + INNER_R} y1={CY} x2={CX + OUTER_R} y2={CY} stroke="#111827" strokeWidth={STROKE} strokeLinecap="round" />
+      <line x1={CX} y1={CY - OUTER_R} x2={CX} y2={CY - INNER_R} stroke="#111827" strokeWidth={STROKE} strokeLinecap="round" />
+      <line x1={CX} y1={CY + INNER_R} x2={CX} y2={CY + OUTER_R} stroke="#111827" strokeWidth={STROKE} strokeLinecap="round" />
+
+      {/* FILLED REGIONS (from procedures) */}
+      {fillings.map((f, i) => (
+        <g key={i} opacity={0.75}>
+          {f.regions.includes("M") && <path d={PATHS.M} fill={f.color} />}
+          {f.regions.includes("D") && <path d={PATHS.D} fill={f.color} />}
+          {f.regions.includes("B") && <path d={PATHS.B} fill={f.color} />}
+          {f.regions.includes("L") && <path d={PATHS.L} fill={f.color} />}
+          {f.regions.includes("C") && (
+            <circle cx={CX} cy={CY} r={INNER_R - 1.2} fill={f.color} />
+          )}
+        </g>
+      ))}
     </svg>
   );
 };
@@ -206,9 +155,9 @@ export default function ToothChart() {
     hasModalOpen,
     patientId,
     patients,
-    isChildMode,
     getToothVisibility,
     getToothDisplayNumber,
+    teethData, // <- used to render occlusal fillings
   } = useToothStore();
 
   const [confirmToggle, setConfirmToggle] = useState<null | {
@@ -231,7 +180,20 @@ export default function ToothChart() {
   };
   const cancelToggleAction = () => setConfirmToggle(null);
 
-  /** Render one tooth (active), with optional passive dimmed behind, scaled to 44px width. */
+  /** Build occlusal "fillings" spec for a tooth from store (Filling procedures only) */
+  const buildOcclusalFillings = (toothNumber: number) => {
+    const list = (teethData[toothNumber.toString()] || []).filter(
+      (p: any) => (p?.status ?? "completed") !== "planned"
+    );
+    return list
+      .filter((p: any) => typeof p?.type === "string" && p.type.toLowerCase().startsWith("filling"))
+      .map((p: any) => ({
+        color: p.color || "#888888",
+        regions: parseFillingRegions(p.type),
+      }));
+  };
+
+  /** Render one tooth (active), with optional passive dimmed behind, scaled to ~52px width. */
   const renderToothBlock = (adult: number, milk: number | null) => {
     const isMilk = toothTypes[adult.toString()] === "milk";
     const active = isMilk && milk ? milk : adult;
@@ -240,7 +202,6 @@ export default function ToothChart() {
     const displayNumber = getToothDisplayNumber(active);
     const isExcluded = isChild && excludedTeeth.includes(adult);
 
-    // A 44px-wide column that holds a visually 66px-tall scaled tooth (from 96px).
     return (
       <div
         key={adult}
@@ -262,8 +223,8 @@ export default function ToothChart() {
           >
             <Tooth
               number={active}
-              displayNumber={displayNumber} // PASS DISPLAY NUMBER
-              isVisible={isVisible} // PASS VISIBILITY
+              displayNumber={displayNumber}
+              isVisible={isVisible}
               allowToggle={!!milk && isVisible && !isExcluded}
             />
           </div>
@@ -281,69 +242,52 @@ export default function ToothChart() {
         >
           <Tooth number={active} allowToggle={!!milk && !isExcluded} />
         </div>
-
-        {milk && (
-          <button
-            onClick={() => handleToggleClick(adult, isMilk)}
-            title="Toggle between adult and milk tooth"
-            className={`absolute top-0.5 right-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-20 bg-white rounded shadow hover:bg-gray-100 ${
-              isExcluded ? "hidden" : ""
-            }`}
-          >
-            <Repeat2 className="w-4 h-4 text-gray-600" />
-          </button>
-        )}
       </div>
     );
   };
 
+  // Quadrants
   const upperLeftQuadrant = pairedTeeth.slice(0, 8);
   const upperRightQuadrant = pairedTeeth.slice(8, 16);
   const lowerRightQuadrant = pairedTeeth.slice(16, 24);
   const lowerLeftQuadrant = pairedTeeth.slice(24, 32);
 
-  /** Cell stacks tooth + occlusal centered within the 44px column. */
-  const UpperCell = ({
-    adult,
-    milk,
-  }: {
-    adult: number;
-    milk: number | null;
-  }) => (
-    <div className={`${CELL_W_CLASS} flex flex-col items-center`}>
-      {renderToothBlock(adult, milk)}
-      <div
-        className={`${CELL_W_CLASS} flex justify-center`}
-        style={{
-          marginTop: UPPER_MT,
-          transform: `translateX(${OCCLUSAL_DX}px)`,
-        }}
-      >
-        <Occlusal />
-      </div>
-    </div>
-  );
+  /** Cell stacks tooth + occlusal centered within the column. */
+  const UpperCell = ({ adult, milk }: { adult: number; milk: number | null }) => {
+    const isMilk = toothTypes[adult.toString()] === "milk";
+    const tooth = isMilk && milk ? milk : adult;
+    const occlusalFillings = buildOcclusalFillings(tooth);
 
-  const LowerCell = ({
-    adult,
-    milk,
-  }: {
-    adult: number;
-    milk: number | null;
-  }) => (
-    <div className={`${CELL_W_CLASS} flex flex-col items-center`}>
-      <div
-        className={`${CELL_W_CLASS} flex justify-center`}
-        style={{
-          marginBottom: LOWER_MB,
-          transform: `translateX(${OCCLUSAL_DX}px)`,
-        }}
-      >
-        <Occlusal />
+    return (
+      <div className={`${CELL_W_CLASS} flex flex-col items-center`}>
+        {renderToothBlock(adult, milk)}
+        <div
+          className={`${CELL_W_CLASS} flex justify-center`}
+          style={{ marginTop: UPPER_MT, transform: `translateX(${OCCLUSAL_DX}px)` }}
+        >
+          <Occlusal fillings={occlusalFillings} />
+        </div>
       </div>
-      {renderToothBlock(adult, milk)}
-    </div>
-  );
+    );
+  };
+
+  const LowerCell = ({ adult, milk }: { adult: number; milk: number | null }) => {
+    const isMilk = toothTypes[adult.toString()] === "milk";
+    const tooth = isMilk && milk ? milk : adult;
+    const occlusalFillings = buildOcclusalFillings(tooth);
+
+    return (
+      <div className={`${CELL_W_CLASS} flex flex-col items-center`}>
+        <div
+          className={`${CELL_W_CLASS} flex justify-center`}
+          style={{ marginBottom: LOWER_MB, transform: `translateX(${OCCLUSAL_DX}px)` }}
+        >
+          <Occlusal fillings={occlusalFillings} />
+        </div>
+        {renderToothBlock(adult, milk)}
+      </div>
+    );
+  };
 
   return (
     <div
@@ -352,7 +296,7 @@ export default function ToothChart() {
       }`}
     >
       {/* UPPER teeth row */}
-      <div className="flex flex-row gap-20 max-w-full justify-center mt-20">
+      <div className="flex flex-row gap-20 max-w-full justify-center mt-10">
         {/* Upper Left (18-11) */}
         <div className="flex flex-row gap-5">
           {upperLeftQuadrant.map(({ adult, milk }) => (
@@ -385,15 +329,13 @@ export default function ToothChart() {
 
       <ProcedureModal />
 
+      {/* Confirm toggle modal */}
       <Dialog
         open={!!confirmToggle}
         onClose={cancelToggleAction}
         className="fixed z-50 inset-0 flex items-center justify-center"
       >
-        <div
-          className="fixed inset-0 bg-black bg-opacity-30"
-          aria-hidden="true"
-        />
+        <div className="fixed inset-0 bg-black bg-opacity-30" aria-hidden="true" />
         <div className="bg-white rounded-xl shadow-xl p-6 z-50 max-w-sm mx-auto">
           <Dialog.Title className="text-lg font-semibold text-gray-800">
             Confirm Tooth Type Switch

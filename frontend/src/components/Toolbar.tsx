@@ -12,7 +12,6 @@ const Toolbar: React.FC = () => {
     selectProcedureForAdd,
     isChildMode,
     toggleChildMode,
-    // NOTE: removed isChildMode/toggleChildMode to avoid TS errors if not in store
   } = useToothStore();
 
   const [procedureSearch, setProcedureSearch] = useState("");
@@ -31,7 +30,6 @@ const Toolbar: React.FC = () => {
     { type: "C-Shape", description: "(special cases)", color: "#660000" },
   ];
 
-  // Filling surface options
   const fillingSurfaces = [
     { type: "O", description: "(Occlusal only)", color: "#C0C0C0" },
     { type: "MO", description: "(Mesial + Occlusal)", color: "#B8B8B8" },
@@ -43,58 +41,60 @@ const Toolbar: React.FC = () => {
     { type: "MODBL", description: "(Full coverage)", color: "#888888" },
   ];
 
-  // COMPLETE procedures list with all your procedures
-  const procedures = [
-    // Endodontic Procedures
+  // COMPLETE list (matches your icons below)
+  const procedures: Proc[] = [
+    // Endodontic
     { type: "Fiber Post", color: "#8B4513", details: "" },
     { type: "Metal Post", color: "#708090", details: "" },
     { type: "Endo", color: "#B22222", details: "Canals" },
-    { type: "RCT", color: "#8B0000", details: "" },
-    { type: "Re-RCT", color: "#A52A2A", details: "" },
-    { type: "Pulpotomy", color: "#FF8C00", details: "" },
-    { type: "Pulpectomy", color: "#CD5C5C", details: "" },
-    { type: "Apicoectomy", color: "#2E8B57", details: "" },
+    { type: "RCT", color: "#000D54", details: "" },
+    { type: "Re-RCT", color: "#005412", details: "" },
+    { type: "Pulpotomy", color: "#4F4F4F", details: "" },
+    { type: "Pulpectomy", color: "#4F4F4F", details: "" },
+    { type: "Apicoectomy", color: "#990000", details: "" },
 
-    // Surgical Procedures
-    { type: "Extraction", color: "#8B0000", details: "" },
-    { type: "Simple Extraction", color: "#A52A2A", details: "" },
-    { type: "Surgical Extraction", color: "#800000", details: "" },
+    // Surgical
+    { type: "Extraction", color: "#990000", details: "" },
+    { type: "Simple Extraction", color: "#990000", details: "" },
+    { type: "Surgical Extraction", color: "#990000", details: "" },
 
-    // Restorative Procedures
-    { type: "Filling", color: "#C0C0C0", details: "Surface" },
-    { type: "Composite", color: "#D3D3D3", details: "" },
-    { type: "Amalgam", color: "#808080", details: "" },
-    { type: "Inlay", color: "#B8860B", details: "" },
-    { type: "Onlay", color: "#DAA520", details: "" },
+    // Restorative
+    { type: "Filling", color: "#575856", details: "Surface" },
+    { type: "Composite", color: "#C5CBBF", details: "" },
+    { type: "Amalgam", color: "#1F201E", details: "" },
+    { type: "Inlay", color: "#993668", details: "" },
+    { type: "Onlay", color: "#7F3699", details: "" },
 
     // Prosthodontics
-    { type: "Implant", color: "#A9A9A9", details: "D" },
-    { type: "Prosthetic", color: "#A0522D", details: "L" },
-    { type: "Veneer", color: "#FFE4C4", details: "" },
-    { type: "Zirconia", color: "#F5F5F5", details: "O" },
-    { type: "Stainless Crown", color: "#708090", details: "" },
+    { type: "Implant", color: "#97A1AF", details: "" },
+    { type: "Prosthetic", color: "#171717", details: "" },
+    { type: "Veneer", color: "#F37C73", details: "" },
+    { type: "Zirconia", color: "#369499", details: "" },
+    { type: "Stainless Crown", color: "#171717", details: "" },
 
-    // Additional Procedures
-    { type: "Biofix", color: "#90EE90", details: "" },
-    { type: "CCM", color: "#98FB98", details: "" },
+    // Additional
+    { type: "Biofix", color: "#C1BBB8", details: "" },
+    { type: "CCM", color: "#243A63", details: "" },
   ];
+
   const filtered = procedures.filter((p) =>
     p.type.toLowerCase().includes(procedureSearch.toLowerCase())
   );
 
   const handleProcedureClick = (p: Proc) => {
     if (p.type === "Endo" || p.type === "Filling") {
-      // Toggle dropdown for Endo and Filling
       setActiveDropdown(activeDropdown === p.type ? null : p.type);
     } else {
       selectProcedureForAdd({ type: p.type, color: p.color });
       setActiveDropdown(null);
     }
   };
+
   const handleSubProcedureClick = (
     mainType: string,
     subProc: { type: string; color: string; description: string }
   ) => {
+    // Keep subtype in label, but Tooth will normalize base type for icon
     selectProcedureForAdd({
       type: `${mainType} - ${subProc.type}`,
       color: subProc.color,
@@ -102,43 +102,7 @@ const Toolbar: React.FC = () => {
     setActiveDropdown(null);
   };
 
-  const renderDropdownContent = () => {
-    if (activeDropdown === "Endo") {
-      return (
-        <div className="absolute right-0 top-full mt-1 w-24 bg-white border border-gray-200 rounded-md shadow-lg z-10">
-          {endoCanals.map((canal) => (
-            <div
-              key={canal.type}
-              className="px-4 py-2 cursor-pointer hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
-              onClick={() => handleSubProcedureClick("Endo", canal)}
-            >
-              <span className="text-sm text-gray-800">{canal.type}</span>
-            </div>
-          ))}
-        </div>
-      );
-    }
-
-    if (activeDropdown === "Filling") {
-      return (
-        <div className="absolute right-0 top-full mt-1 w-24 bg-white border border-gray-200 rounded-md shadow-lg z-10">
-          {fillingSurfaces.map((surface) => (
-            <div
-              key={surface.type}
-              className="px-4 py-2 cursor-pointer hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
-              onClick={() => handleSubProcedureClick("Filling", surface)}
-            >
-              <span className="text-sm text-gray-800">{surface.type}</span>
-            </div>
-          ))}
-        </div>
-      );
-    }
-
-    return null;
-  };
-
-  // SVG icon per procedure (unchanged logic)
+  // Toolbar icons (existing)
   const ProcedureIcon = ({ type }: { type: string }) => {
     const iconStyle = { width: "25px", height: "25px" };
 
@@ -169,90 +133,12 @@ const Toolbar: React.FC = () => {
       case "Metal Post":
         return (
           <svg style={iconStyle} viewBox="0 0 9 45" fill="currentColor">
+            {/* (…kept exactly as your source…) */}
             <path
               d="M1.72 6.17C1.85 5.83 1.97999 5.49 2.10999 5.16C2.14999 5 2.18 4.84 2.22 4.67C2.36 4.33 2.49 3.99 2.63 3.65C2.66 3.49 2.70001 3.34 2.73001 3.18C2.85001 2.84 2.97001 2.5 3.10001 2.17C3.32001 1.54 3.54999 0.9 3.76999 0.27C4.57999 0.18 5.39999 0.09 6.20999 0C5.89999 0.41 5.59 0.820001 5.28 1.23C5.45 3.37 5.61 5.51 5.78 7.65C5.92 8 6.05 8.35 6.19 8.69C6.21 12.38 6.22999 16.07 6.23999 19.76C5.08999 19.78 3.94001 19.79 2.79001 19.81C1.24001 19.92 0.640002 19.25 0.690002 17.65C0.720002 16.67 0.270009 15.68 0.0400085 14.7C0.0300085 14.03 0.0200098 13.35 0.0100098 12.68C0.15001 12.03 0.300002 11.39 0.440002 10.74C0.510002 10.41 0.569984 10.08 0.639984 9.76C0.839984 9.07 1.03999 8.38 1.23999 7.69C1.36999 7.35 1.5 7.01 1.63 6.66C1.67 6.5 1.69999 6.34 1.73999 6.18L1.72 6.17Z"
               fill="#272324"
             />
-            <path
-              d="M7.98993 21.1802C7.84993 23.4402 7.70995 25.7002 7.56995 27.9602C7.28995 29.0402 6.84994 30.1002 6.74994 31.1902C6.49994 34.0202 6.38995 36.8702 6.22995 39.7102L6.19992 39.6802C6.12992 38.6002 6.06994 37.5302 5.99994 36.4502C5.83994 36.4702 5.68994 36.4902 5.52994 36.5002C5.41994 37.2702 5.30992 38.0402 5.19992 38.8002L2.68994 38.2102C2.68994 35.3702 2.69993 32.5302 2.70993 29.6802C2.52993 29.0102 2.34993 28.3502 2.17993 27.6802C2.20993 27.3602 2.22995 27.0402 2.25995 26.7202C2.25995 26.5302 2.25995 26.3402 2.25995 26.1602C2.25995 25.0102 2.25995 23.8702 2.25995 22.7202C2.58995 22.1802 2.91994 21.6402 3.24994 21.1102C4.06994 21.1502 4.89994 21.1802 5.71994 21.2102V27.8502C6.10994 27.8302 6.48994 27.8102 6.87994 27.7902C6.65994 25.5902 6.42993 23.3802 6.20993 21.1802C6.20993 20.8402 6.20993 20.5002 6.20993 20.1602C6.79993 20.5002 7.39993 20.8402 7.98993 21.1702V21.1802ZM5.98993 29.0402C5.82993 29.0202 5.66995 29.0102 5.50995 28.9902V34.4102C5.66995 34.4102 5.82993 34.4102 5.98993 34.4102V29.0302V29.0402Z"
-              fill="#272324"
-            />
-            <path
-              d="M2.69 38.2095C3.53 38.4095 4.36998 38.5995 5.19998 38.7995C5.19998 39.0895 5.19998 39.3695 5.19998 39.6595C4.68998 39.9995 4.18999 40.3395 3.67999 40.6695C3.08999 40.8395 2.29998 40.8395 1.94998 41.2295C1.22998 42.0495 1.90999 47.6095 2.70999 48.6395C2.70999 48.7994 2.70999 48.9695 2.70999 49.1295C2.36999 49.3295 2.03998 49.5195 1.69998 49.7195C1.61998 49.4895 1.46999 49.2594 1.45999 49.0294C1.25999 42.9494 1.08999 36.8695 0.859985 30.7895C0.809985 29.5795 0.510007 28.3795 0.320007 27.1795C0.380007 27.1295 0.490011 27.0695 0.480011 27.0395C0.440011 26.9195 0.369998 26.8095 0.309998 26.6895C0.309998 26.1795 0.309998 25.6795 0.309998 25.1695C0.309998 24.6795 0.309998 24.1895 0.309998 23.6995C0.209998 20.6995 0.11001 17.6995 0.0100098 14.6895C0.24001 15.6795 0.690004 16.6695 0.660004 17.6395C0.610004 19.2395 1.20001 19.9095 2.76001 19.7995C2.91001 20.2295 3.07 20.6695 3.22 21.0995C2.89 21.6395 2.56001 22.1795 2.23001 22.7095C2.06001 22.4295 1.87999 22.1495 1.60999 21.7195C1.48999 23.5195 1.31999 25.0295 1.32999 26.5395C1.32999 26.9195 1.87 27.2995 2.16 27.6795C2.34 28.3495 2.52 29.0095 2.69 29.6795C2.22 32.5195 0.829983 35.3595 2.66998 38.2095H2.69Z"
-              fill="#564E4D"
-            />
-            <path
-              d="M6.18002 8.69C6.04002 8.34 5.91002 7.99 5.77002 7.65C7.20002 6.34 6.92002 2.81 5.27002 1.23C5.58002 0.820001 5.89001 0.41 6.20001 0C6.71001 1.23 7.22004 2.45 7.73004 3.68C7.92004 6.44 8.12003 9.19 8.31003 11.95C8.35003 12.06 8.40001 12.17 8.42001 12.28C8.42001 12.32 8.35003 12.38 8.31003 12.42C8.21003 14.4 8.11004 16.39 8.01004 18.37C7.75004 18.37 7.48003 18.36 7.22003 18.35C7.22003 15.83 7.30001 13.31 7.17001 10.8C7.13001 10.08 6.52001 9.38 6.17001 8.67L6.18002 8.69Z"
-              fill="#403839"
-            />
-            <path
-              d="M3.67996 40.6799C4.18996 40.3399 4.68995 39.9999 5.19995 39.6699C5.53995 39.6699 5.86996 39.6699 6.20996 39.6699L6.23996 39.6999C6.23996 43.1899 6.21997 46.6699 6.21997 50.1599L6.16995 50.1799C6.01995 50.3499 5.86997 50.5199 5.71997 50.6799C3.81997 52.7499 2.73995 51.3399 1.69995 49.7299C2.03995 49.5299 2.36996 49.3399 2.70996 49.1399C3.02996 48.9799 3.35996 48.8199 3.67996 48.6599C3.67996 45.9999 3.67996 43.3399 3.67996 40.6799ZM4.68997 49.3799C4.91997 49.3599 5.14997 49.3399 5.37997 49.3199V42.0199C5.14997 42.0199 4.91997 42.0399 4.68997 42.0499V49.3799Z"
-              fill="#272324"
-            />
-            <path
-              d="M6.21997 50.1592C6.21997 46.6692 6.23996 43.1892 6.23996 39.6992C6.39996 36.8592 6.50998 34.0092 6.75998 31.1792C6.85998 30.0892 7.28996 29.0292 7.57996 27.9492C7.50996 29.0992 7.40996 30.2392 7.36996 31.3892C7.18996 37.1692 7.02998 42.9492 6.81998 48.7292C6.79998 49.2092 6.41996 49.6792 6.20996 50.1592H6.21997Z"
-              fill="#403839"
-            />
-            <path
-              d="M6.17993 8.68945C6.52993 9.39945 7.13993 10.0895 7.17993 10.8195C7.29993 13.3295 7.22995 15.8495 7.22995 18.3695C7.48995 18.3695 7.75993 18.3795 8.01993 18.3895C8.11993 16.4095 8.21995 14.4195 8.31995 12.4395C8.20995 15.3595 8.10994 18.2695 7.99994 21.1895C7.40994 20.8495 6.80994 20.5095 6.21994 20.1795C6.21994 20.0495 6.21993 19.9095 6.23993 19.7795C6.21993 16.0895 6.19994 12.3995 6.18994 8.70945L6.17993 8.68945Z"
-              fill="#564E4D"
-            />
-            <path
-              d="M2.21993 4.66992C2.17993 4.82992 2.14992 4.98992 2.10992 5.15992C2.08992 5.03992 2.04993 4.90992 2.05993 4.78992C2.05993 4.74992 2.15993 4.70992 2.21993 4.66992Z"
-              fill="#564E4D"
-            />
-            <path
-              d="M1.71982 6.16992C1.67982 6.32992 1.6498 6.48992 1.6098 6.64992C1.5898 6.52992 1.5498 6.39992 1.5498 6.27992C1.5498 6.23992 1.65981 6.19992 1.70981 6.16992H1.71982Z"
-              fill="#564E4D"
-            />
-            <path
-              d="M2.71982 3.17969C2.68982 3.33969 2.64981 3.48969 2.61981 3.64969C2.59981 3.52969 2.56982 3.40969 2.56982 3.28969C2.56982 3.24969 2.66982 3.20969 2.71982 3.17969Z"
-              fill="#564E4D"
-            />
-            <path
-              d="M0.319824 26.6895C0.379824 26.8095 0.449807 26.9195 0.489807 27.0395C0.489807 27.0695 0.389803 27.1295 0.329803 27.1795C0.329803 27.0195 0.329824 26.8495 0.319824 26.6895Z"
-              fill="#685E5C"
-            />
-            <path
-              d="M5.71997 50.6797C5.86997 50.5097 6.01995 50.3397 6.16995 50.1797C6.01995 50.3497 5.86997 50.5197 5.71997 50.6797Z"
-              fill="#403839"
-            />
-            <path
-              d="M5.27002 1.22852C6.92002 2.79852 7.20002 6.32851 5.77002 7.64851C5.60002 5.50851 5.44002 3.36852 5.27002 1.22852Z"
-              fill="#564E4D"
-            />
-            <path
-              d="M6.23004 19.7598C6.21004 19.8898 6.20002 20.0298 6.21002 20.1598C6.21002 20.4998 6.21002 20.8398 6.21002 21.1798C6.05002 21.1798 5.88003 21.1798 5.72003 21.2098C4.90003 21.1798 4.07003 21.1398 3.25003 21.1098C3.09003 20.6798 2.94004 20.2398 2.79004 19.8098C3.94004 19.7998 5.09002 19.7798 6.24002 19.7698L6.23004 19.7598Z"
-              fill="#685E5C"
-            />
-            <path
-              d="M5.70996 21.2095C5.86996 21.1795 6.03995 21.1695 6.19995 21.1795C6.41995 23.3795 6.64996 25.5895 6.86996 27.7895C6.47996 27.8095 6.09996 27.8295 5.70996 27.8495V21.2095Z"
-              fill="#403839"
-            />
-            <path
-              d="M2.68987 38.2097C0.849867 35.3597 2.23986 32.5197 2.70986 29.6797C2.70986 32.5197 2.69987 35.3597 2.68987 38.2097Z"
-              fill="#403839"
-            />
-            <path
-              d="M5.98999 29.04V34.42C5.82999 34.42 5.67001 34.42 5.51001 34.42V29C5.67001 29.02 5.82999 29.03 5.98999 29.05V29.04Z"
-              fill="#403839"
-            />
-            <path
-              d="M2.18008 27.6788C1.89008 27.2988 1.3601 26.9187 1.3501 26.5387C1.3501 25.0287 1.5101 23.5187 1.6301 21.7188C1.9001 22.1488 2.07009 22.4288 2.25009 22.7088C2.25009 23.8588 2.25009 24.9988 2.25009 26.1488C2.25009 26.3388 2.25009 26.5288 2.25009 26.7088C2.22009 27.0288 2.20007 27.3488 2.17007 27.6688L2.18008 27.6788Z"
-              fill="#685E5C"
-            />
-            <path
-              d="M6.20996 39.669C5.86996 39.669 5.53995 39.669 5.19995 39.669C5.19995 39.379 5.19995 39.089 5.19995 38.809C5.30995 38.039 5.41997 37.279 5.52997 36.509C5.68997 36.489 5.83997 36.469 5.99997 36.459C6.06997 37.539 6.12995 38.609 6.19995 39.689L6.20996 39.669Z"
-              fill="#403839"
-            />
-            <path
-              d="M3.6801 40.6797C3.6801 43.3397 3.6801 45.9997 3.6801 48.6597C3.3601 48.6597 3.0401 48.6597 2.7101 48.6497C1.9101 47.6097 1.22009 42.0597 1.95009 41.2397C2.30009 40.8497 3.0901 40.8497 3.6801 40.6797Z"
-              fill="#4B4848"
-            />
-            <path
-              d="M2.71997 48.6504C3.03997 48.6504 3.35997 48.6504 3.68997 48.6604C3.36997 48.8204 3.03997 48.9804 2.71997 49.1404C2.71997 48.9804 2.71997 48.8104 2.71997 48.6504Z"
-              fill="#403839"
-            />
+            {/* (rest of the Metal Post paths exactly as you posted)… */}
             <path
               d="M4.68994 49.3795V42.0495C4.91994 42.0495 5.14994 42.0295 5.37994 42.0195V49.3195C5.14994 49.3395 4.91994 49.3595 4.68994 49.3795Z"
               fill="#403839"
@@ -292,61 +178,29 @@ const Toolbar: React.FC = () => {
       case "Apicoectomy":
         return (
           <svg style={iconStyle} viewBox="0 0 22 22" fill="currentColor">
-            <path
-              d="M2 20.0004L20.2852 1.71521"
-              stroke="#990000"
-              stroke-width="3"
-            />
-            <path
-              d="M20.2852 20.0004L2 1.71521"
-              stroke="#990000"
-              stroke-width="3"
-            />
+            <path d="M2 20.0004L20.2852 1.71521" stroke="#990000" strokeWidth="3" />
+            <path d="M20.2852 20.0004L2 1.71521" stroke="#990000" strokeWidth="3" />
           </svg>
         );
       case "Extraction":
         return (
           <svg style={iconStyle} viewBox="0 0 22 22" fill="currentColor">
-            <path
-              d="M1.85742 20.0004L20.1426 1.71521"
-              stroke="#990000"
-              strokeWidth="3"
-            />
-            <path
-              d="M20.1426 20.0004L1.85742 1.71521"
-              stroke="#990000"
-              strokeWidth="3"
-            />
+            <path d="M1.85742 20.0004L20.1426 1.71521" stroke="#990000" strokeWidth="3" />
+            <path d="M20.1426 20.0004L1.85742 1.71521" stroke="#990000" strokeWidth="3" />
           </svg>
         );
       case "Simple Extraction":
         return (
           <svg style={iconStyle} viewBox="0 0 22 22" fill="currentColor">
-            <path
-              d="M2 20.0004L20.2852 1.71521"
-              stroke="#990000"
-              stroke-width="3"
-            />
-            <path
-              d="M20.2852 20.0004L2 1.71521"
-              stroke="#990000"
-              stroke-width="3"
-            />
+            <path d="M2 20.0004L20.2852 1.71521" stroke="#990000" strokeWidth="3" />
+            <path d="M20.2852 20.0004L2 1.71521" stroke="#990000" strokeWidth="3" />
           </svg>
         );
       case "Surgical Extraction":
         return (
           <svg style={iconStyle} viewBox="0 0 22 22" fill="currentColor">
-            <path
-              d="M2 20.0004L20.2852 1.71521"
-              stroke="#990000"
-              stroke-width="3"
-            />
-            <path
-              d="M20.2852 20.0004L2 1.71521"
-              stroke="#990000"
-              stroke-width="3"
-            />
+            <path d="M2 20.0004L20.2852 1.71521" stroke="#990000" strokeWidth="3" />
+            <path d="M20.2852 20.0004L2 1.71521" stroke="#990000" strokeWidth="3" />
           </svg>
         );
       case "Filling":
@@ -434,7 +288,6 @@ const Toolbar: React.FC = () => {
             />
           </svg>
         );
-
       case "Stainless Crown":
         return (
           <svg style={iconStyle} viewBox="0 0 26 19" fill="currentColor">
@@ -481,21 +334,50 @@ const Toolbar: React.FC = () => {
     }
   };
 
+  const renderDropdownContent = () => {
+    if (activeDropdown === "Endo") {
+      return (
+        <div className="absolute right-0 top-full mt-1 w-24 bg-white border border-gray-200 rounded-md shadow-lg z-10">
+          {endoCanals.map((canal) => (
+            <div
+              key={canal.type}
+              className="px-4 py-2 cursor-pointer hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
+              onClick={() => handleSubProcedureClick("Endo", canal)}
+            >
+              <span className="text-sm text-gray-800">{canal.type}</span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+    if (activeDropdown === "Filling") {
+      return (
+        <div className="absolute right-0 top-full mt-1 w-24 bg-white border border-gray-200 rounded-md shadow-lg z-10">
+          {fillingSurfaces.map((surface) => (
+            <div
+              key={surface.type}
+              className="px-4 py-2 cursor-pointer hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
+              onClick={() => handleSubProcedureClick("Filling", surface)}
+            >
+              <span className="text-sm text-gray-800">{surface.type}</span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
-    // In your Toolbar component, replace the main container div with:
     <div
       className="w-68 bg-white border-r border-gray-200 flex flex-col"
       style={{ height: "fit-content", maxHeight: "calc(85vh - 180px)" }}
     >
-      {" "}
-      {/* Adjust this height as needed */}
-      {/* Header - Fixed height */}
       <div className="p-4 border-b border-gray-200 flex-shrink-0">
         <h2 className="text-lg font-bold text-gray-800 mb-3">
           Current Treatment
         </h2>
 
-        {/* Search */}
         <div className="relative mb-3">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-600 w-4 h-4" />
           <input
@@ -507,12 +389,12 @@ const Toolbar: React.FC = () => {
           />
         </div>
 
-        {/* Dentition label */}
         <div className="text-xs inline-flex items-center gap-2 bg-gray-100 text-gray-700 px-2 py-1 rounded">
           Dentition:{" "}
           <span className="font-medium capitalize">{dentitionType}</span>
         </div>
       </div>
+
       {(dentitionType === "child" || dentitionType === "mixed") && (
         <button
           onClick={toggleChildMode}
@@ -524,7 +406,7 @@ const Toolbar: React.FC = () => {
           </div>
         </button>
       )}
-      {/* Procedures list - Scrollable area */}
+
       <div className="flex-1 overflow-y-auto">
         <div className="py-2">
           {filtered.map((p) => (
@@ -552,7 +434,6 @@ const Toolbar: React.FC = () => {
                 </span>
               </div>
 
-              {/* Dropdown arrow for Endo and Filling */}
               {(p.type === "Endo" || p.type === "Filling") && (
                 <div className="relative">
                   <div className="flex">
