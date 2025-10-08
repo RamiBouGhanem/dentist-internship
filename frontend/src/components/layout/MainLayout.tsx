@@ -5,21 +5,21 @@ import ProcedureHistoryTable from "../ProcedureHistoryTable";
 
 export default function MainLayout() {
   return (
-    <div className="px-6 pb-6">
-      {/* Top row: Toolbar (fixed) + ToothChart (fills) */}
-      <div className="flex flex-row flex-nowrap items-start w-full min-h-0 gap-4">
-        {/* Left: Toolbar fixed width */}
-        <aside className="w-64 flex-shrink-0 border-r border-gray-200 overflow-y-auto">
+    <div className="flex flex-col min-h-screen px-6 pb-6">
+      {/* Top row: Toolbar + ToothChart - Constrained to tooth chart height */}
+      <div className="flex flex-row items-start w-full">
+        {/* Left: Toolbar - matches tooth chart height */}
+        <div className="w-64 flex-shrink-0 border-r border-gray-200">
           <Toolbar />
-        </aside>
+        </div>
 
-        {/* Right: ToothChart */}
-        <main className="flex-1 min-w-0">
+        {/* Right: ToothChart - defines the height for the row */}
+        <div className="flex-1 min-w-0">
           <ToothChart />
-        </main>
+        </div>
       </div>
 
-      {/* Bottom: Procedure history table */}
+      {/* Bottom: Procedure history table - separate section */}
       <div className="mt-4">
         <ProcedureHistoryTable />
       </div>
