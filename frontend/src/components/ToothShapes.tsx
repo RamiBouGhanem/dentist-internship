@@ -1557,6 +1557,40 @@ export const Tooth48: React.FC<ToothProps> = ({
 );
 
 // ==================== DEFAULT TOOTH ====================
+// --- add this map near the mapper ---
+const MILK_TO_ADULT_MAP: Record<number, number> = {
+  55: 15, 54: 14, 53: 13, 52: 12, 51: 11,
+  65: 25, 64: 24, 63: 23, 62: 22, 61: 21,
+  75: 35, 74: 34, 73: 33, 72: 32, 71: 31,
+  85: 45, 84: 44, 83: 43, 82: 42, 81: 41,
+};
+
+// Optional: use a simple outline as a nicer fallback than a rectangle
+const GenericTooth: React.FC<ToothProps> = ({ procedures = [], onRemove }) => (
+  <svg viewBox="0 0 28 58" className="w-full h-full">
+    <path
+      d="M14 56c-2 0-4-.1-6 .1-3.7.3-7.7-1.9-7.6-5.2.1-9 2.4-17.8 2.7-26.8.2-7.4-.2-14.8 0-22.2C3.3.9 4.7-.5 6.5.2c1.9.7 3.6 2.2 4.6 3.6 6 8 7.5 18.5 9.4 28.2 1 5.1 2.1 10.1 3.1 15.2.4 2 1 4.1 1.1 6.1.2 3-1.7 3.9-6.1 3.9H14z"
+      fill="white"
+      stroke="#111827"
+      strokeWidth="1.5"
+    />
+    {procedures.map((p, i) => (
+      <g key={i}>
+        <circle cx={p.x ?? 14} cy={(p.y ?? 48) + i * 7} r={3.5} fill={p.color} />
+        <foreignObject x={(p.x ?? 14) + 5} y={((p.y ?? 48) + i * 7) - 5} width={20} height={20}>
+          <button
+            className="bg-white text-red-500 rounded-full text-[10px] hover:bg-red-50"
+            onClick={(e) => { e.stopPropagation(); onRemove(i); }}
+          >
+            ✕
+          </button>
+        </foreignObject>
+      </g>
+    ))}
+  </svg>
+);
+
+
 export const DefaultTooth: React.FC<ToothProps> = ({
   procedures = [],
   onRemove,
@@ -1597,48 +1631,18 @@ export const DefaultTooth: React.FC<ToothProps> = ({
 );
 
 // ==================== TOOTH MAPPER ====================
+// ==================== TOOTH MAPPER ====================
 export const useToothComponent = (toothNumber: number) => {
   const toothComponents: { [key: number]: React.FC<ToothProps> } = {
-    // Upper Right Quadrant (1st Quadrant)
-    11: Tooth11,
-    12: Tooth12,
-    13: Tooth13,
-    14: Tooth14,
-    15: Tooth15,
-    16: Tooth16,
-    17: Tooth17,
-    18: Tooth18,
-
-    // Upper Left Quadrant (2nd Quadrant)
-    21: Tooth21,
-    22: Tooth22,
-    23: Tooth23,
-    24: Tooth24,
-    25: Tooth25,
-    26: Tooth26,
-    27: Tooth27,
-    28: Tooth28,
-
-    // Lower Left Quadrant (3rd Quadrant)
-    31: Tooth31,
-    32: Tooth32,
-    33: Tooth33,
-    34: Tooth34,
-    35: Tooth35,
-    36: Tooth36,
-    37: Tooth37,
-    38: Tooth38,
-
-    // Lower Right Quadrant (4th Quadrant)
-    41: Tooth41,
-    42: Tooth42,
-    43: Tooth43,
-    44: Tooth44,
-    45: Tooth45,
-    46: Tooth46,
-    47: Tooth47,
-    48: Tooth48,
+    // ...your existing 11–18, 21–28, 31–38, 41–48 mappings...
+    11: Tooth11, 12: Tooth12, 13: Tooth13, 14: Tooth14, 15: Tooth15, 16: Tooth16, 17: Tooth17, 18: Tooth18,
+    21: Tooth21, 22: Tooth22, 23: Tooth23, 24: Tooth24, 25: Tooth25, 26: Tooth26, 27: Tooth27, 28: Tooth28,
+    31: Tooth31, 32: Tooth32, 33: Tooth33, 34: Tooth34, 35: Tooth35, 36: Tooth36, 37: Tooth37, 38: Tooth38,
+    41: Tooth41, 42: Tooth42, 43: Tooth43, 44: Tooth44, 45: Tooth45, 46: Tooth46, 47: Tooth47, 48: Tooth48,
   };
 
-  return toothComponents[toothNumber] || DefaultTooth;
+  const normalizeToAdult = (n: number) => MILK_TO_ADULT_MAP[n] ?? n;
+  const key = normalizeToAdult(toothNumber);
+  return toothComponents[key] || GenericTooth; // <- no more rectangle fallback
 };
+

@@ -17,7 +17,7 @@ export interface Procedure {
   dentistName?: string;
   x?: number;
   y?: number;
-  color: string; // Change from optional to required
+  color: string; // required
 }
 
 export interface Patient {
@@ -38,12 +38,40 @@ const PEDO_CAPABLE_ADULTS = [
   35, 34, 33, 32, 31, 41, 42, 43, 44, 45,
 ];
 
+// Adult -> Primary (milk)
 const ADULT_TO_PEDO_MAP: Record<number, number> = {
   15: 55, 14: 54, 13: 53, 12: 52, 11: 51,
   21: 61, 22: 62, 23: 63, 24: 64, 25: 65,
   31: 71, 32: 72, 33: 73, 34: 74, 35: 75,
   41: 81, 42: 82, 43: 83, 44: 84, 45: 85,
 };
+
+// Primary (milk) -> Adult
+const MILK_TO_ADULT_MAP: Record<number, number> = {
+  55: 15, 54: 14, 53: 13, 52: 12, 51: 11,
+  65: 25, 64: 24, 63: 23, 62: 22, 61: 21,
+  75: 35, 74: 34, 73: 33, 72: 32, 71: 31,
+  85: 45, 84: 44, 83: 43, 82: 42, 81: 41,
+};
+
+// Normalize any tooth number (adult or milk) to its adult partner
+const toAdultNumber = (n: number) =>
+  (n >= 11 && n <= 48) ? n : (MILK_TO_ADULT_MAP[n] ?? n);
+
+// Helper sets for dimming decisions
+const ADULT_TEETH_SET = new Set([
+  11,12,13,14,15,16,17,18,
+  21,22,23,24,25,26,27,28,
+  31,32,33,34,35,36,37,38,
+  41,42,43,44,45,46,47,48
+]);
+
+const CHILD_TEETH_SET = new Set([
+  51,52,53,54,55,
+  61,62,63,64,65,
+  71,72,73,74,75,
+  81,82,83,84,85
+]);
 
 function buildDefaultToothTypes(dentitionType?: Patient['dentitionType']): Record<string, ToothType> {
   if (dentitionType === 'child') {
@@ -68,14 +96,16 @@ interface ToothStore {
 
   // tooth type toggles
   toothTypes: Record<string, ToothType>;
-  toggleToothType: (number: number) => void;
+  toggleToothType: (number: number) => void; // keeps compat (expects adult)
+  toggleToothTypeByToothNumber: (toothNo: number) => void; // works with adult or primary
   getActiveToothNumber: (tooth: number) => number;
 
-  // Child mode functionality - ADD THESE
+  // Child mode
   isChildMode: boolean;
   toggleChildMode: () => void;
   getToothVisibility: (toothNumber: number) => boolean;
   getToothDisplayNumber: (toothNumber: number) => number;
+  isToothDimmed: (toothNumber: number) => boolean;
 
   // selection (click-to-apply)
   selectedProcedureForAdd: (Procedure & { color?: string }) | null;
@@ -138,50 +168,54 @@ export const useToothStore = create<ToothStore>()(
       patientError: null,
 
       toothTypes: {},
-      
-      // Child mode functionality - ADD THESE
+
+      // Child mode
       isChildMode: false,
-      
-      toggleChildMode: () => set((state) => ({ 
-        isChildMode: !state.isChildMode 
+
+      toggleChildMode: () => set((state) => ({
+        isChildMode: !state.isChildMode
       })),
 
-      getToothVisibility: (toothNumber: number) => {
-        const { isChildMode, patients, patientId } = get();
+      // Always show; we'll use dimming instead of hiding
+      getToothVisibility: (_toothNumber: number) => true,
+
+      // DIMMING RULES:
+      // 1) If this tooth's ADULT partner is toggled to 'milk' (converted), dim it.
+      // 2) Additionally, when child mode is on for child/mixed patients, dim permanent teeth.
+      isToothDimmed: (toothNumber: number) => {
+        const { isChildMode, patients, patientId, toothTypes } = get();
         const currentPatient = patients.find((p) => p._id === patientId);
-        const dentitionType = currentPatient?.dentitionType || "adult";
-        
-        if (!isChildMode || dentitionType === "adult") return true;
-        
-        // In child mode, only show specific teeth (51-55, 61-65, 71-75, 81-85)
-        const childTeeth = [
-          51, 52, 53, 54, 55,
-          61, 62, 63, 64, 65,
-          71, 72, 73, 74, 75,
-          81, 82, 83, 84, 85
-        ];
-        
-        return childTeeth.includes(toothNumber);
+        const dentitionType = currentPatient?.dentitionType || 'adult';
+
+        // Converted?
+        const adult = toAdultNumber(toothNumber);
+        if (toothTypes[adult.toString()] === 'milk') return true;
+
+        // Child-mode dim permanent teeth (for child/mixed only)
+        if (
+          isChildMode &&
+          (dentitionType === 'child' || dentitionType === 'mixed') &&
+          ADULT_TEETH_SET.has(toothNumber)
+        ) {
+          return true;
+        }
+
+        return false;
       },
 
       getToothDisplayNumber: (toothNumber: number) => {
         const { isChildMode, patients, patientId } = get();
         const currentPatient = patients.find((p) => p._id === patientId);
         const dentitionType = currentPatient?.dentitionType || "adult";
-        
+
         if (!isChildMode || dentitionType === "adult") return toothNumber;
-        
-        // Convert adult tooth numbers to child numbers
-        const adultToChildMap: { [key: number]: number } = {
-          11: 51, 12: 52, 13: 53, 14: 54, 15: 55,
-          21: 61, 22: 62, 23: 63, 24: 64, 25: 65,
-          31: 71, 32: 72, 33: 73, 34: 74, 35: 75,
-          41: 81, 42: 82, 43: 83, 44: 84, 45: 85
-        };
-        
+
+        // Convert adult tooth numbers to child numbers for display
+        const adultToChildMap: { [key: number]: number } = ADULT_TO_PEDO_MAP;
         return adultToChildMap[toothNumber] || toothNumber;
       },
 
+      // Legacy toggle (expects an adult number); kept for compatibility
       toggleToothType: (number) => {
         set((state) => {
           const current = state.toothTypes[number.toString()] || 'adult';
@@ -194,12 +228,29 @@ export const useToothStore = create<ToothStore>()(
         });
       },
 
+      // NEW: toggle that accepts either adult or primary
+      toggleToothTypeByToothNumber: (toothNo) => {
+        const adult = toAdultNumber(toothNo);
+        set((state) => {
+          const current = state.toothTypes[adult.toString()] || 'adult';
+          return {
+            toothTypes: {
+              ...state.toothTypes,
+              [adult.toString()]: current === 'adult' ? 'milk' : 'adult',
+            },
+          };
+        });
+      },
+
+      // Active tooth number used for saving/reading procedures:
+      // Always normalize to adult, then map to milk if the adult is currently set to 'milk'
       getActiveToothNumber: (tooth) => {
         const { toothTypes } = get();
-        if (toothTypes[tooth.toString()] === 'milk') {
-          return ADULT_TO_PEDO_MAP[tooth] ?? tooth;
+        const adult = toAdultNumber(tooth);
+        if (toothTypes[adult.toString()] === 'milk') {
+          return ADULT_TO_PEDO_MAP[adult] ?? adult;
         }
-        return tooth;
+        return adult;
       },
 
       // === Selection (click-to-apply) ===
@@ -473,6 +524,13 @@ export const useToothStore = create<ToothStore>()(
         const state = get();
         const sel = state.selectedProcedureForAdd;
         if (!sel) return { ok: false, reason: 'No procedure selected.' };
+
+        // Intercept Convert: flip adult<->milk for the adult partner of this tooth number
+        if ((sel.type || '').split(' - ')[0] === 'Convert') {
+          state.toggleToothTypeByToothNumber(Number(toothNumber));
+          state.clearSelectedForAdd();
+          return { ok: true };
+        }
 
         if (sel.type === 'Bridge') {
           if (!state.bridgeDraft) {

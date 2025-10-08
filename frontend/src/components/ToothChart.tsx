@@ -10,13 +10,13 @@ import { Dialog } from "@headlessui/react";
 const CELL_W_CLASS = "w-[34px]";
 const TOOTH_NATIVE_W = 64; // Tooth.tsx (w-16) ~ 64px
 const TOOTH_NATIVE_H = 96; // Tooth.tsx (h-24) ~ 96px
-const SCALE = 52 / TOOTH_NATIVE_W; // 0.8125 -> tweak if you want tighter
+const SCALE = 52 / TOOTH_NATIVE_W;
 const SCALED_H = TOOTH_NATIVE_H * SCALE;
 
-const OCCLUSAL_DX = 0; // px, slight right nudge
-const UPPER_MT = 10; // px, occlusal margin-top under upper teeth
-const LOWER_MB = 8; // px, occlusal margin-bottom above lower teeth
-const VERTICAL_GAP = "gap-20"; // tall chart spacing
+const OCCLUSAL_DX = 0;
+const UPPER_MT = 10;
+const LOWER_MB = 8;
+const VERTICAL_GAP = "gap-20";
 
 /** Paired dentition map */
 const pairedTeeth = [
@@ -69,7 +69,6 @@ function parseFillingRegions(type: string): Array<"M" | "D" | "B" | "L" | "C"> {
   const match = norm.match(/FILLING\s*-\s*([A-Z]+)/);
   const code = match ? match[1] : (norm.startsWith("FILLING") ? "O" : "");
 
-  // Map any letter set to regions: O->C, M,D,B,L stay.
   const regions = new Set<"M" | "D" | "B" | "L" | "C">();
   for (const ch of code) {
     if (ch === "O") regions.add("C");
@@ -78,14 +77,12 @@ function parseFillingRegions(type: string): Array<"M" | "D" | "B" | "L" | "C"> {
     if (ch === "B") regions.add("B");
     if (ch === "L") regions.add("L");
   }
-  // Common combos without explicit O:
   if (code === "MOD" || code === "DOM" || code === "DMO") {
     regions.add("C"); regions.add("M"); regions.add("D");
   }
-  if (code === "MODBL" || code === "MODLB" || code === "MODBLF") {
+  if (code.includes("MODBL")) {
     regions.add("C"); regions.add("M"); regions.add("D"); regions.add("B"); regions.add("L");
   }
-  // If nothing recognized but it's a Filling, default to center.
   if (!regions.size && norm.startsWith("FILLING")) regions.add("C");
   return [...regions];
 }
@@ -103,7 +100,6 @@ const Occlusal = ({
   const CY = SIZE / 2;
   const STROKE = 1.6;
 
-  // Reusable region paths
   const PATHS = useMemo(() => {
     const pM = `M ${CX} ${CY - INNER_R} A ${INNER_R} ${INNER_R} 0 0 0 ${CX} ${CY + INNER_R}
                L ${CX - OUTER_R} ${CY} A ${OUTER_R} ${OUTER_R} 0 0 1 ${CX} ${CY - OUTER_R} Z`;
@@ -126,13 +122,11 @@ const Occlusal = ({
     >
       <circle cx={CX} cy={CY} r={OUTER_R} fill="white" stroke="#111827" strokeWidth={STROKE} />
       <circle cx={CX} cy={CY} r={INNER_R} fill="white" stroke="#111827" strokeWidth={STROKE} />
-      {/* spokes */}
       <line x1={CX - OUTER_R} y1={CY} x2={CX - INNER_R} y2={CY} stroke="#111827" strokeWidth={STROKE} strokeLinecap="round" />
       <line x1={CX + INNER_R} y1={CY} x2={CX + OUTER_R} y2={CY} stroke="#111827" strokeWidth={STROKE} strokeLinecap="round" />
       <line x1={CX} y1={CY - OUTER_R} x2={CX} y2={CY - INNER_R} stroke="#111827" strokeWidth={STROKE} strokeLinecap="round" />
       <line x1={CX} y1={CY + INNER_R} x2={CX} y2={CY + OUTER_R} stroke="#111827" strokeWidth={STROKE} strokeLinecap="round" />
 
-      {/* FILLED REGIONS (from procedures) */}
       {fillings.map((f, i) => (
         <g key={i} opacity={0.75}>
           {f.regions.includes("M") && <path d={PATHS.M} fill={f.color} />}
@@ -157,7 +151,7 @@ export default function ToothChart() {
     patients,
     getToothVisibility,
     getToothDisplayNumber,
-    teethData, // <- used to render occlusal fillings
+    teethData,
   } = useToothStore();
 
   const [confirmToggle, setConfirmToggle] = useState<null | {
@@ -180,7 +174,6 @@ export default function ToothChart() {
   };
   const cancelToggleAction = () => setConfirmToggle(null);
 
-  /** Build occlusal "fillings" spec for a tooth from store (Filling procedures only) */
   const buildOcclusalFillings = (toothNumber: number) => {
     const list = (teethData[toothNumber.toString()] || []).filter(
       (p: any) => (p?.status ?? "completed") !== "planned"
@@ -193,11 +186,16 @@ export default function ToothChart() {
       }));
   };
 
-  /** Render one tooth (active), with optional passive dimmed behind, scaled to ~52px width. */
+  /** Always render BOTH silhouettes:
+   *  - active (based on toothTypes/adult↔milk) = normal
+   *  - passive (the other) = dimmed
+   * No rectangles, no badges.
+   */
   const renderToothBlock = (adult: number, milk: number | null) => {
     const isMilk = toothTypes[adult.toString()] === "milk";
     const active = isMilk && milk ? milk : adult;
     const passive = isMilk && milk ? adult : milk;
+
     const isVisible = getToothVisibility(active);
     const displayNumber = getToothDisplayNumber(active);
     const isExcluded = isChild && excludedTeeth.includes(adult);
@@ -208,29 +206,32 @@ export default function ToothChart() {
         className={`relative ${CELL_W_CLASS} group ${
           !isVisible || isExcluded ? "opacity-30 pointer-events-none" : ""
         }`}
-        style={{ height: `${SCALED_H}px` }}
+        style={{ height: `${SCALED_H}px`, background: "transparent" }}
       >
-        {/* PASSIVE dimmed tooth behind (scaled) */}
+        {/* PASSIVE dimmed silhouette (if available) */}
         {passive && (
           <div
-            className="absolute left-1/2 top-0 z-10"
+            className="absolute left-1/2 top-0 z-10 pointer-events-none"
             style={{
               width: `${TOOTH_NATIVE_W}px`,
               height: `${TOOTH_NATIVE_H}px`,
               transform: `translateX(-50%) scale(${SCALE})`,
               transformOrigin: "top center",
+              filter: "saturate(0.2) brightness(0.95)",
+              opacity: 0.35,
+              background: "transparent",
             }}
           >
             <Tooth
-              number={active}
-              displayNumber={displayNumber}
-              isVisible={isVisible}
-              allowToggle={!!milk && isVisible && !isExcluded}
+              number={passive}
+              displayNumber={getToothDisplayNumber(passive)}
+              isVisible={getToothVisibility(passive)}
+              allowToggle={false}
             />
           </div>
         )}
 
-        {/* ACTIVE tooth (scaled) */}
+        {/* ACTIVE silhouette */}
         <div
           className="absolute left-1/2 top-0 z-10"
           style={{
@@ -238,6 +239,7 @@ export default function ToothChart() {
             height: `${TOOTH_NATIVE_H}px`,
             transform: `translateX(-50%) scale(${SCALE})`,
             transformOrigin: "top center",
+            background: "transparent",
           }}
         >
           <Tooth number={active} allowToggle={!!milk && !isExcluded} />
@@ -252,7 +254,6 @@ export default function ToothChart() {
   const lowerRightQuadrant = pairedTeeth.slice(16, 24);
   const lowerLeftQuadrant = pairedTeeth.slice(24, 32);
 
-  /** Cell stacks tooth + occlusal centered within the column. */
   const UpperCell = ({ adult, milk }: { adult: number; milk: number | null }) => {
     const isMilk = toothTypes[adult.toString()] === "milk";
     const tooth = isMilk && milk ? milk : adult;
@@ -295,15 +296,13 @@ export default function ToothChart() {
         hasModalOpen ? "pointer-events-none blur-[1px]" : ""
       }`}
     >
-      {/* UPPER teeth row */}
+      {/* UPPER */}
       <div className="flex flex-row gap-20 max-w-full justify-center mt-10">
-        {/* Upper Left (18-11) */}
         <div className="flex flex-row gap-5">
           {upperLeftQuadrant.map(({ adult, milk }) => (
             <UpperCell key={adult} adult={adult} milk={milk} />
           ))}
         </div>
-        {/* Upper Right (21-28) */}
         <div className="flex flex-row gap-5">
           {upperRightQuadrant.map(({ adult, milk }) => (
             <UpperCell key={adult} adult={adult} milk={milk} />
@@ -311,15 +310,13 @@ export default function ToothChart() {
         </div>
       </div>
 
-      {/* LOWER teeth row */}
+      {/* LOWER */}
       <div className="flex flex-row gap-20 max-w-full justify-center mb-2">
-        {/* Lower LEFT (48-41) */}
         <div className="flex flex-row gap-5">
           {lowerLeftQuadrant.map(({ adult, milk }) => (
             <LowerCell key={adult} adult={adult} milk={milk} />
           ))}
         </div>
-        {/* Lower RIGHT (31-38) */}
         <div className="flex flex-row gap-5">
           {lowerRightQuadrant.map(({ adult, milk }) => (
             <LowerCell key={adult} adult={adult} milk={milk} />

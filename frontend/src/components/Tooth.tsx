@@ -8,7 +8,7 @@ import { useToothComponent } from "./ToothShapes";
 interface ToothProps {
   number: number;
   allowToggle?: boolean; // compat
-  dimmed?: boolean; // compat
+  dimmed?: boolean;      // compat
   displayNumber?: number;
   isVisible?: boolean;
 }
@@ -104,6 +104,7 @@ export default function Tooth({ number }: ToothProps) {
 
   // Normalize "Endo - 3 Canals" / "Filling - MOD" → "Endo" / "Filling"
   const mainTypeOf = (t?: string) => (t ?? "").split(" - ")[0];
+  const subTypeOf = (t?: string) => (t ?? "").split(" - ")[1] || "";
 
   /**
    * Exact SVGs from Toolbar’s ProcedureIcon.
@@ -117,6 +118,7 @@ export default function Tooth({ number }: ToothProps) {
 
   const iconDefForType = (typeMain: string): IconDef | null => {
     switch (typeMain) {
+      // NOTE: "Convert" is intentionally not rendered on tooth (we skip it below).
       case "Fiber Post":
         return {
           w: 14,
@@ -131,6 +133,7 @@ export default function Tooth({ number }: ToothProps) {
             </g>
           ),
         };
+
       case "Stainless Crown":
         return {
           w: 26,
@@ -164,9 +167,7 @@ export default function Tooth({ number }: ToothProps) {
           w: 14,
           h: 35,
           node: (
-            // move downward inside the glyph box, then flip both axes so it goes apex→crown and right→left
             <g transform="translate(0,8)">
-              {/* flip around the native bounds (w=14, h=35): translate to bottom-right, then scale(-1,-1) */}
               <g transform="translate(14,35) scale(-1,-1)">
                 <path
                   d="M10.1321 5.00373L9.18247 4.57635L5.4632 12.6189L8.62854 14.0345L12.2687 6.01391L11.3586 5.58365L10.1321 5.00373Z"
@@ -186,15 +187,11 @@ export default function Tooth({ number }: ToothProps) {
           w: 10,
           h: 36,
           node: (
-            // slight overall down-shift and scale to fit
             <g transform="translate(0,12) scale(0.9)">
-              {/* (same complex paths from your toolbar icon) */}
-              {/* BEGIN metal post glyph */}
               <path
                 d="M1.72 6.17C1.85 5.83 1.97999 5.49 2.10999 5.16C2.14999 5 2.18 4.84 2.22 4.67C2.36 4.33 2.49 3.99 2.63 3.65C2.66 3.49 2.70001 3.34 2.73001 3.18C2.85001 2.84 2.97001 2.5 3.10001 2.17C3.32001 1.54 3.54999 0.9 3.76999 0.27C4.57999 0.18 5.39999 0.09 6.20999 0C5.89999 0.41 5.59 0.820001 5.28 1.23C5.45 3.37 5.61 5.51 5.78 7.65C5.92 8 6.05 8.35 6.19 8.69C6.21 12.38 6.22999 16.07 6.23999 19.76C5.08999 19.78 3.94001 19.79 2.79001 19.81C1.24001 19.92 0.640002 19.25 0.690002 17.65C0.720002 16.67 0.270009 15.68 0.0400085 14.7C0.0300085 14.03 0.0200098 13.35 0.0100098 12.68C0.15001 12.03 0.300002 11.39 0.440002 10.74C0.510002 10.41 0.569984 10.08 0.639984 9.76C0.839984 9.07 1.03999 8.38 1.23999 7.69C1.36999 7.35 1.5 7.01 1.63 6.66C1.67 6.5 1.69999 6.34 1.73999 6.18L1.72 6.17Z"
                 fill="#272324"
               />
-              {/* (rest of metal post paths as in your toolbar) */}
             </g>
           ),
         };
@@ -232,7 +229,6 @@ export default function Tooth({ number }: ToothProps) {
           w: 16,
           h: 16,
           node: (
-            // shift downward inside the glyph box
             <g transform="translate(-2,18)">
               <rect y="0.8578" width="21" height="16" fill="#4F4F4F" />
             </g>
@@ -244,28 +240,20 @@ export default function Tooth({ number }: ToothProps) {
           w: 16,
           h: 16,
           node: (
-            // shift downward inside the glyph box
             <g transform="translate(-2,18)">
               <rect y="0.8578" width="21" height="16" fill="#4F4F4F" />
             </g>
           ),
         };
+
       case "Apicoectomy":
         return {
           w: 22,
           h: 22,
           node: (
             <>
-              <path
-                d="M2 20.0004L20.2852 1.71521"
-                stroke="#990000"
-                strokeWidth="3"
-              />
-              <path
-                d="M20.2852 20.0004L2 1.71521"
-                stroke="#990000"
-                strokeWidth="3"
-              />
+              <path d="M2 20.0004L20.2852 1.71521" stroke="#990000" strokeWidth="3" />
+              <path d="M20.2852 20.0004L2 1.71521" stroke="#990000" strokeWidth="3" />
             </>
           ),
         };
@@ -279,18 +267,10 @@ export default function Tooth({ number }: ToothProps) {
           node: (
             <>
               <g transform="translate(-6 -3)">
-                <path
-                  d="M2 20.0004L20.2852 1.71521"
-                  stroke="#990000"
-                  strokeWidth="3"
-                />
+                <path d="M2 20.0004L20.2852 1.71521" stroke="#990000" strokeWidth="3" />
               </g>
               <g transform="translate(-6 -3)">
-                <path
-                  d="M20.2852 20.0004L2 1.71521"
-                  stroke="#990000"
-                  strokeWidth="3"
-                />
+                <path d="M20.2852 20.0004L2 1.71521" stroke="#990000" strokeWidth="3" />
               </g>
             </>
           ),
@@ -357,7 +337,6 @@ export default function Tooth({ number }: ToothProps) {
           w: 26,
           h: 30,
           node: (
-            // Flip vertically (180°) and make larger around the glyph center (18,20)
             <g transform="translate(13 4) scale(1.3,-1.3) translate(-18 -20)">
               <path
                 d="M1.14502 0.857788H34.145L31.145 5.98026H27.395V10.6759H21.27V12.6179V17.8276L23.5617 17.0619L21.27 17.8322V23.8134V28.8515V35.7036L20.145 38.8578H14.145L12.9367 35.7036V32.5494H10.645L12.9367 31.7518V27.427V24.3899V20.6332L11.1034 21.2494L12.9367 20.6119V15.4917V11.2058V10.6759H7.52002V5.98026H4.14502L1.14502 0.857788Z"
@@ -436,11 +415,18 @@ export default function Tooth({ number }: ToothProps) {
   const renderOverlay = (proc: Procedure, idx: number) => {
     const typeMain = mainTypeOf((proc as any).type);
 
-    // 👉 Do NOT render ANY filling on the tooth overlay.
+    // Do NOT render Any filling on the tooth overlay (handled on occlusal)
     if (typeMain === "Filling") return null;
+
+    // Do NOT render Convert (no rectangles, no badges) — conversion is visualized by dimming in ToothChart
+    if (typeMain === "Convert") return null;
 
     const def = iconDefForType(typeMain);
     if (!def) return null;
+
+    // Helper: is this a LOWER tooth? (FDI: 3x/4x adults, 7x/8x primary)
+    const tens = Math.floor(number / 10);
+    const isLowerTooth = tens === 3 || tens === 4 || tens === 7 || tens === 8;
 
     // Your chosen size
     const targetW = 35;
@@ -450,7 +436,16 @@ export default function Tooth({ number }: ToothProps) {
 
     // Flip Endo horizontally (right→left)
     const flipX = typeMain === "Endo";
-    const sx = flipX ? -scaleBase : scaleBase;
+    let sx = flipX ? -scaleBase : scaleBase;
+
+    // NEW: mirror vertically for LOWER teeth (upper = normal)
+    const sy = isLowerTooth ? -scaleBase : scaleBase;
+
+    // Mirror horizontally for right-side quadrants only (upper-right 2x, lower-right 3x and their primary 6x/7x)
+    const isRightSide =
+      tens === 2 || tens === 3 || tens === 6 || tens === 7;
+    if (isRightSide) sx = -sx;
+
     const txBefore = -def.w / 2;
     const tyBefore = -def.h / 2;
 
@@ -464,7 +459,7 @@ export default function Tooth({ number }: ToothProps) {
       <g
         key={`ov-${idx}`}
         {...sharedHandlers}
-        transform={`translate(${cx} ${cy}) scale(${sx} ${scaleBase}) translate(${txBefore} ${tyBefore})`}
+        transform={`translate(${cx} ${cy}) scale(${sx} ${sy}) translate(${txBefore} ${tyBefore})`}
       >
         {def.node}
       </g>
