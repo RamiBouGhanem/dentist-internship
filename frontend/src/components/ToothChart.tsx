@@ -61,13 +61,15 @@ const pairedTeeth = [
   { adult: 41, milk: 81 },
 ];
 
-const excludedTeeth = [18, 17, 16, 26, 27, 28, 36, 37, 38, 46, 47, 48];
+const excludedTeeth = pairedTeeth
+  .filter((t) => t.milk === null)
+  .map((t) => t.adult);
 
 /** Parse a "Filling - SURFACES" type into regions for occlusal painting. */
 function parseFillingRegions(type: string): Array<"M" | "D" | "B" | "L" | "C"> {
   const norm = type?.toUpperCase() ?? "";
   const match = norm.match(/FILLING\s*-\s*([A-Z]+)/);
-  const code = match ? match[1] : (norm.startsWith("FILLING") ? "O" : "");
+  const code = match ? match[1] : norm.startsWith("FILLING") ? "O" : "";
 
   const regions = new Set<"M" | "D" | "B" | "L" | "C">();
   for (const ch of code) {
@@ -78,10 +80,16 @@ function parseFillingRegions(type: string): Array<"M" | "D" | "B" | "L" | "C"> {
     if (ch === "L") regions.add("L");
   }
   if (code === "MOD" || code === "DOM" || code === "DMO") {
-    regions.add("C"); regions.add("M"); regions.add("D");
+    regions.add("C");
+    regions.add("M");
+    regions.add("D");
   }
   if (code.includes("MODBL")) {
-    regions.add("C"); regions.add("M"); regions.add("D"); regions.add("B"); regions.add("L");
+    regions.add("C");
+    regions.add("M");
+    regions.add("D");
+    regions.add("B");
+    regions.add("L");
   }
   if (!regions.size && norm.startsWith("FILLING")) regions.add("C");
   return [...regions];
@@ -101,14 +109,30 @@ const Occlusal = ({
   const STROKE = 1.6;
 
   const PATHS = useMemo(() => {
-    const pM = `M ${CX} ${CY - INNER_R} A ${INNER_R} ${INNER_R} 0 0 0 ${CX} ${CY + INNER_R}
-               L ${CX - OUTER_R} ${CY} A ${OUTER_R} ${OUTER_R} 0 0 1 ${CX} ${CY - OUTER_R} Z`;
-    const pD = `M ${CX} ${CY - INNER_R} A ${INNER_R} ${INNER_R} 0 0 1 ${CX} ${CY + INNER_R}
-               L ${CX + OUTER_R} ${CY} A ${OUTER_R} ${OUTER_R} 0 0 0 ${CX} ${CY - OUTER_R} Z`;
-    const pB = `M ${CX - INNER_R} ${CY} A ${INNER_R} ${INNER_R} 0 0 1 ${CX + INNER_R} ${CY}
-               L ${CX} ${CY - OUTER_R} A ${OUTER_R} ${OUTER_R} 0 0 0 ${CX - OUTER_R} ${CY} Z`;
-    const pL = `M ${CX - INNER_R} ${CY} A ${INNER_R} ${INNER_R} 0 0 0 ${CX + INNER_R} ${CY}
-               L ${CX} ${CY + OUTER_R} A ${OUTER_R} ${OUTER_R} 0 0 1 ${CX - OUTER_R} ${CY} Z`;
+    const pM = `M ${CX} ${CY - INNER_R} A ${INNER_R} ${INNER_R} 0 0 0 ${CX} ${
+      CY + INNER_R
+    }
+               L ${CX - OUTER_R} ${CY} A ${OUTER_R} ${OUTER_R} 0 0 1 ${CX} ${
+      CY - OUTER_R
+    } Z`;
+    const pD = `M ${CX} ${CY - INNER_R} A ${INNER_R} ${INNER_R} 0 0 1 ${CX} ${
+      CY + INNER_R
+    }
+               L ${CX + OUTER_R} ${CY} A ${OUTER_R} ${OUTER_R} 0 0 0 ${CX} ${
+      CY - OUTER_R
+    } Z`;
+    const pB = `M ${CX - INNER_R} ${CY} A ${INNER_R} ${INNER_R} 0 0 1 ${
+      CX + INNER_R
+    } ${CY}
+               L ${CX} ${CY - OUTER_R} A ${OUTER_R} ${OUTER_R} 0 0 0 ${
+      CX - OUTER_R
+    } ${CY} Z`;
+    const pL = `M ${CX - INNER_R} ${CY} A ${INNER_R} ${INNER_R} 0 0 0 ${
+      CX + INNER_R
+    } ${CY}
+               L ${CX} ${CY + OUTER_R} A ${OUTER_R} ${OUTER_R} 0 0 1 ${
+      CX - OUTER_R
+    } ${CY} Z`;
     return { M: pM, D: pD, B: pB, L: pL };
   }, [CX, CY, OUTER_R, INNER_R]);
 
@@ -120,12 +144,58 @@ const Occlusal = ({
       className="block"
       aria-label="Tooth top view"
     >
-      <circle cx={CX} cy={CY} r={OUTER_R} fill="white" stroke="#111827" strokeWidth={STROKE} />
-      <circle cx={CX} cy={CY} r={INNER_R} fill="white" stroke="#111827" strokeWidth={STROKE} />
-      <line x1={CX - OUTER_R} y1={CY} x2={CX - INNER_R} y2={CY} stroke="#111827" strokeWidth={STROKE} strokeLinecap="round" />
-      <line x1={CX + INNER_R} y1={CY} x2={CX + OUTER_R} y2={CY} stroke="#111827" strokeWidth={STROKE} strokeLinecap="round" />
-      <line x1={CX} y1={CY - OUTER_R} x2={CX} y2={CY - INNER_R} stroke="#111827" strokeWidth={STROKE} strokeLinecap="round" />
-      <line x1={CX} y1={CY + INNER_R} x2={CX} y2={CY + OUTER_R} stroke="#111827" strokeWidth={STROKE} strokeLinecap="round" />
+      <circle
+        cx={CX}
+        cy={CY}
+        r={OUTER_R}
+        fill="white"
+        stroke="#111827"
+        strokeWidth={STROKE}
+      />
+      <circle
+        cx={CX}
+        cy={CY}
+        r={INNER_R}
+        fill="white"
+        stroke="#111827"
+        strokeWidth={STROKE}
+      />
+      <line
+        x1={CX - OUTER_R}
+        y1={CY}
+        x2={CX - INNER_R}
+        y2={CY}
+        stroke="#111827"
+        strokeWidth={STROKE}
+        strokeLinecap="round"
+      />
+      <line
+        x1={CX + INNER_R}
+        y1={CY}
+        x2={CX + OUTER_R}
+        y2={CY}
+        stroke="#111827"
+        strokeWidth={STROKE}
+        strokeLinecap="round"
+      />
+      <line
+        x1={CX}
+        y1={CY - OUTER_R}
+        x2={CX}
+        y2={CY - INNER_R}
+        stroke="#111827"
+        strokeWidth={STROKE}
+        strokeLinecap="round"
+      />
+      <line
+        x1={CX}
+        y1={CY + INNER_R}
+        x2={CX}
+        y2={CY + OUTER_R}
+        stroke="#111827"
+        strokeWidth={STROKE}
+        strokeLinecap="round"
+      />
 
       {fillings.map((f, i) => (
         <g key={i} opacity={0.75}>
@@ -179,7 +249,11 @@ export default function ToothChart() {
       (p: any) => (p?.status ?? "completed") !== "planned"
     );
     return list
-      .filter((p: any) => typeof p?.type === "string" && p.type.toLowerCase().startsWith("filling"))
+      .filter(
+        (p: any) =>
+          typeof p?.type === "string" &&
+          p.type.toLowerCase().startsWith("filling")
+      )
       .map((p: any) => ({
         color: p.color || "#888888",
         regions: parseFillingRegions(p.type),
@@ -254,7 +328,13 @@ export default function ToothChart() {
   const lowerRightQuadrant = pairedTeeth.slice(16, 24);
   const lowerLeftQuadrant = pairedTeeth.slice(24, 32);
 
-  const UpperCell = ({ adult, milk }: { adult: number; milk: number | null }) => {
+  const UpperCell = ({
+    adult,
+    milk,
+  }: {
+    adult: number;
+    milk: number | null;
+  }) => {
     const isMilk = toothTypes[adult.toString()] === "milk";
     const tooth = isMilk && milk ? milk : adult;
     const occlusalFillings = buildOcclusalFillings(tooth);
@@ -264,7 +344,10 @@ export default function ToothChart() {
         {renderToothBlock(adult, milk)}
         <div
           className={`${CELL_W_CLASS} flex justify-center`}
-          style={{ marginTop: UPPER_MT, transform: `translateX(${OCCLUSAL_DX}px)` }}
+          style={{
+            marginTop: UPPER_MT,
+            transform: `translateX(${OCCLUSAL_DX}px)`,
+          }}
         >
           <Occlusal fillings={occlusalFillings} />
         </div>
@@ -272,7 +355,13 @@ export default function ToothChart() {
     );
   };
 
-  const LowerCell = ({ adult, milk }: { adult: number; milk: number | null }) => {
+  const LowerCell = ({
+    adult,
+    milk,
+  }: {
+    adult: number;
+    milk: number | null;
+  }) => {
     const isMilk = toothTypes[adult.toString()] === "milk";
     const tooth = isMilk && milk ? milk : adult;
     const occlusalFillings = buildOcclusalFillings(tooth);
@@ -281,7 +370,10 @@ export default function ToothChart() {
       <div className={`${CELL_W_CLASS} flex flex-col items-center`}>
         <div
           className={`${CELL_W_CLASS} flex justify-center`}
-          style={{ marginBottom: LOWER_MB, transform: `translateX(${OCCLUSAL_DX}px)` }}
+          style={{
+            marginBottom: LOWER_MB,
+            transform: `translateX(${OCCLUSAL_DX}px)`,
+          }}
         >
           <Occlusal fillings={occlusalFillings} />
         </div>
@@ -332,7 +424,10 @@ export default function ToothChart() {
         onClose={cancelToggleAction}
         className="fixed z-50 inset-0 flex items-center justify-center"
       >
-        <div className="fixed inset-0 bg-black bg-opacity-30" aria-hidden="true" />
+        <div
+          className="fixed inset-0 bg-black bg-opacity-30"
+          aria-hidden="true"
+        />
         <div className="bg-white rounded-xl shadow-xl p-6 z-50 max-w-sm mx-auto">
           <Dialog.Title className="text-lg font-semibold text-gray-800">
             Confirm Tooth Type Switch
